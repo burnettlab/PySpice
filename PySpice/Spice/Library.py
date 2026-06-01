@@ -22,10 +22,13 @@
 
 import logging
 import re
+from copy import deepcopy
+from itertools import chain
+from os import PathLike
+from pathlib import Path
+from typing import Iterable, Optional, Self, Tuple, Union
 
 ####################################################################################################
-
-from ..Tools.File import Directory
 from .Parser import SpiceParser
 
 ####################################################################################################
@@ -34,8 +37,58 @@ _module_logger = logging.getLogger(__name__)
 
 ####################################################################################################
 
-class SpiceLibrary:
+DEFAULT_EXTENSIONS = (
+    ".spice",
+    ".lib",
+    ".mod",
+    ".lib@xyce",
+    ".mod@xyce",
+)
 
+####################################################################################################
+
+
+class LibraryConfig:
+    """This class holds the configuration for parsing a SpiceLibrary."""
+
+    path: Path
+    recurse: bool
+    extensions: Tuple[str, ...]
+
+    def __init__(
+        self,
+        path: PathLike,
+        recurse: bool = False,
+        section: Optional[str] = None,
+        extensions: Tuple[str, ...] = (),
+    ):
+        self.path = Path(path).resolve()
+        self.recurse = recurse
+        self.section = section
+        self.extensions = extensions
+
+        print(self.path, self.recurse, self.section, self.extensions)
+
+    def __iter__(self):
+        def str_with_ext(path: Path):
+            return (str(path), path.suffix)
+
+        if self.path.is_dir():
+            glob_func = self.path.rglob if self.recurse else self.path.glob
+            yield from map(
+                str_with_ext,
+                chain.from_iterable(
+                    glob_func(f"*{ext}") for ext in self.extensions + DEFAULT_EXTENSIONS
+                ),
+            )
+        else:
+            yield str_with_ext(self.path)
+
+
+####################################################################################################
+
+
+class SpiceLibrary:
     """This class implements a Spice sub-circuits and models library.
 
     A library is a directory which is recursively scanned for '.lib' file and parsed for sub-circuit
@@ -52,38 +105,46 @@ class SpiceLibrary:
 
     """
 
-    _logger = _module_logger.getChild('Library')
-
-    EXTENSIONS = (
-        '.spice',
-        '.lib',
-        '.mod',
-        '.lib@xyce',
-        '.mod@xyce',
-    )
+    _logger = _module_logger.getChild("Library")
 
     ##############################################
 
-    def __init__(self, root_path, recurse=False, section=None):
+    def __init__(
+        self,
+        paths: Union[
+            PathLike, Iterable[PathLike], LibraryConfig, Iterable[LibraryConfig]
+        ],
+        recurse: bool = False,
+        section: Optional[str] = None,
+        extensions: Tuple[str, ...] = (),
+    ):
 
-        self._directory = Directory(root_path).expand_vars_and_user()
+        # self._directory = Directory(root_path).expand_vars_and_user()
+        if isinstance(paths, (LibraryConfig, PathLike, str)):
+            paths = [paths]
 
         self._subcircuits = {}
         self._models = {}
 
-        for path in self._directory.iter_file():
-            extension = path.extension.lower()
-            if extension in self.EXTENSIONS:
-                self._logger.debug("Parse {}".format(path))
+        for cfg in paths:
+            if not isinstance(cfg, LibraryConfig):
+                cfg = LibraryConfig(cfg, recurse, section, extensions)
+
+            for path, extension in cfg:
+                self._logger.debug(f"Parse {path}")
                 try:
-                    spice_parser = SpiceParser(path=path, recurse=recurse, section=section)
+                    spice_parser = SpiceParser(
+                        path=path, recurse=cfg.recurse, section=cfg.section
+                    )
                     for lib in spice_parser.incl_libs:
                         self._subcircuits.update(lib._subcircuits)
                         self._models.update(lib._models)
                 except Exception as e:
                     # Parse problem with this file, so skip it and keep going.
-                    self._logger.warn("Problem parsing {path} - {e}".format(**locals()))
+                    # raise e
+                    self._logger.warning(f"Problem parsing {path} - {e}")
                     continue
+
                 if spice_parser.is_only_subcircuit():
                     for subcircuit in spice_parser.subcircuits:
                         name = self._suffix_name(subcircuit.name, extension)
@@ -98,8 +159,8 @@ class SpiceLibrary:
     @staticmethod
     def _suffix_name(name, extension):
 
-        if extension.endswith('@xyce'):
-            name += '@xyce'
+        if extension.endswith("@xyce"):
+            name += "@xyce"
 
         return name
 
@@ -118,14 +179,24 @@ class SpiceLibrary:
 
     ##############################################
 
+    def __add__(self, other: Self) -> Self:
+        ret_lib = deepcopy(self)
+        ret_lib._subcircuits.update(other._subcircuits)
+        ret_lib._models.update(other._models)
+        return ret_lib
+
+    def __or__(self, other: Self) -> Self:
+        return self.__add__(other)
+
+    ##############################################
     @property
     def subcircuits(self):
-        """ Dictionary of sub-circuits """
+        """Dictionary of sub-circuits"""
         return iter(self._subcircuits)
 
     @property
     def models(self):
-        """ Dictionary of models """
+        """Dictionary of models"""
         return iter(self._models)
 
     # ##############################################
@@ -141,7 +212,7 @@ class SpiceLibrary:
     # ##############################################
 
     def search(self, s):
-        """ Return dict of all models/subcircuits with names matching regex s. """
+        """Return dict of all models/subcircuits with names matching regex s."""
         matches = {}
         models_subcircuits = {**self._models, **self._subcircuits}
         for name, mdl_subckt in models_subcircuits.items():

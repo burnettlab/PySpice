@@ -90,8 +90,8 @@ Some examples of usage:
 import logging
 import sys
 
-from . import Unit as _Unit
 from . import SiUnits as _SiUnits
+from . import Unit as _Unit
 
 ####################################################################################################
 
@@ -105,6 +105,7 @@ if not _has_matmul:
     _module_logger.warning("Your Python version doesn't implement @ operator")
 
 ####################################################################################################
+
 
 class UnitValueShorcut:
 
@@ -123,7 +124,6 @@ class UnitValueShorcut:
     ##############################################
 
     def __call__(self, other):
-
         """self(other)"""
 
         return self._new_value(other)
@@ -131,36 +131,40 @@ class UnitValueShorcut:
     ##############################################
 
     def __rmatmul__(self, other):
-
         """other @ self"""
 
         return self._new_value(other)
 
+
 ####################################################################################################
+
 
 def _to_ascii(name):
     ascii_name = name
     for args in (
-            ('μ', 'u'),
-            ('Ω', 'Ohm'),
-            ('°C', 'Degree'),
+        ("μ", "u"),
+        ("Ω", "Ohm"),
+        ("°C", "Degree"),
     ):
         ascii_name = ascii_name.replace(*args)
     return ascii_name
 
-def define_shortcut(name, shortcut) :
+
+def define_shortcut(name, shortcut):
     # ° is illegal in Python 3.5
     #  see https://docs.python.org/3/reference/lexical_analysis.html#identifiers
     #      https://www.python.org/dev/peps/pep-3131/
-    if '°' not in name:
+    if "°" not in name:
         globals()[name] = shortcut
     ascii_name = _to_ascii(name)
     if ascii_name != name:
         globals()[ascii_name] = shortcut
 
+
 ####################################################################################################
 
 # Define shortcuts for unit prefixes : ..., micro, milli, kilo, mega, ...
+
 
 def _build_prefix_shortcut(unit_prefix):
     unit_cls_name = unit_prefix.__class__.__name__
@@ -170,45 +174,55 @@ def _build_prefix_shortcut(unit_prefix):
     shortcut = lambda value: _Unit.UnitValue(prefixed_unit, value)
     define_shortcut(name, shortcut)
 
+
 for unit_prefix in _Unit.UnitPrefixMetaclass.prefix_iter():
     if unit_prefix.__class__ != _Unit.ZeroPower:
-        _build_prefix_shortcut(unit_prefix) # capture unit_prefix
+        _build_prefix_shortcut(unit_prefix)  # capture unit_prefix
 
 ####################################################################################################
 
 # Fixme: better ???
 
+
 class FrequencyValue(_Unit.UnitValue, _Unit.FrequencyMixin):
     pass
 
+
 # Fixme:
-class FrequencyValues(_Unit.UnitValues): # , _Unit.FrequencyMixin
+class FrequencyValues(_Unit.UnitValues):  # , _Unit.FrequencyMixin
     pass
+
 
 class PeriodValue(_Unit.UnitValue, _Unit.PeriodMixin):
     pass
 
-class PeriodValues(_Unit.UnitValues): # , _Unit.PeriodMixin
+
+class PeriodValues(_Unit.UnitValues):  # , _Unit.PeriodMixin
     pass
+
 
 ####################################################################################################
 
 # Define unit shortcuts
 
+
 def _build_unit_type_shortcut(unit):
-    name = 'U_' + unit.unit_suffix
+    name = "U_" + unit.unit_suffix
     define_shortcut(name, unit)
 
+
 def _build_as_unit_shortcut(unit):
-    name = 'as_' + unit.unit_suffix
+    name = "as_" + unit.unit_suffix
     shortcut = unit.validate
     define_shortcut(name, shortcut)
 
+
 def _exec_body(ns, unit_prefix):
-    ns['POWER'] = unit_prefix
+    ns["POWER"] = unit_prefix
+
 
 def _build_unit_prefix_shortcut(unit, unit_prefix):
-    name = 'u_' + str(unit_prefix) + unit.unit_suffix
+    name = "u_" + str(unit_prefix) + unit.unit_suffix
     if unit.__class__ == _SiUnits.Hertz:
         value_ctor = FrequencyValue
         values_ctor = FrequencyValues
@@ -220,9 +234,10 @@ def _build_unit_prefix_shortcut(unit, unit_prefix):
         values_ctor = _Unit.UnitValues
     prefixed_unit = _Unit.PrefixedUnit(unit, unit_prefix, value_ctor, values_ctor)
     _Unit.PrefixedUnit.register(prefixed_unit)
-    define_shortcut('U' + name[1:], prefixed_unit)
+    define_shortcut("U" + name[1:], prefixed_unit)
     shortcut = UnitValueShorcut(prefixed_unit)
     define_shortcut(name, shortcut)
+
 
 def _build_unit_shortcut(unit):
     _build_as_unit_shortcut(unit)
@@ -230,6 +245,7 @@ def _build_unit_shortcut(unit):
     for unit_prefix in _Unit.UnitPrefixMetaclass.prefix_iter():
         if unit_prefix.is_defined_in_spice:
             _build_unit_prefix_shortcut(unit, unit_prefix)
+
 
 for unit in _Unit.UnitMetaclass.unit_iter():
     if unit.unit_suffix and unit.__class__ not in (_SiUnits.Kilogram,):

@@ -20,6 +20,7 @@
 ####################################################################################################
 
 import PySpice.Logging.Logging as Logging
+
 logger = Logging.setup_logging()
 
 ####################################################################################################
@@ -39,7 +40,8 @@ simulator = circuit.simulator(temperature=25, nominal_temperature=25)
 analysis = simulator.operating_point()
 
 for node in analysis.nodes.values():
-    print('Node {}: {:5.2f} V'.format(str(node), float(node))) # Fixme: format value + unit
+    assert len(node) == 1
+    print('Node {}: {:5.2f} V'.format(str(node), float(node[0]))) # Fixme: format value + unit
 #o#
 
 ####################################################################################################
@@ -74,5 +76,6 @@ analysis = simulator.operating_point()
 
 # Fixme: current over resistor
 for node in analysis.branches.values():
-    print('Node {}: {:5.2f} A'.format(str(node), float(node))) # Fixme: format value + unit
+    assert len(node) == 1
+    print('Node {}: {:5.2f} A'.format(str(node), float(node[0]))) # Fixme: format value + unit
 #o#

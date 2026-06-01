@@ -99,9 +99,8 @@ See Ngspice documentation for details.
 
 import logging
 
-from ..Tools.StringTools import str_spice, join_list, join_dict
-from ..Unit import U_m, U_s, U_A, U_V, U_Degree, U_Ω, U_F, U_H, U_Hz
-from .Netlist import (Element, AnyPinElement, FixedPinElement, NPinElement, OptionalPin)
+from ..Tools.StringTools import join_dict, join_list, str_spice
+from ..Unit import U_A, U_F, U_H, U_V, U_Ω, U_Degree, U_Hz, U_m, U_s
 from .ElementParameter import (
     # KeyValueParameter,
     BoolKeyParameter,
@@ -111,12 +110,13 @@ from .ElementParameter import (
     FlagParameter,
     FloatKeyParameter,
     FloatPairKeyParameter,
-    FloatTripletKeyParameter,
     FloatPositionalParameter,
+    FloatTripletKeyParameter,
     InitialStatePositionalParameter,
     IntKeyParameter,
     ModelPositionalParameter,
-    )
+)
+from .Netlist import AnyPinElement, Element, FixedPinElement, NPinElement, OptionalPin
 
 ####################################################################################################
 
@@ -124,18 +124,23 @@ _module_logger = logging.getLogger(__name__)
 
 ####################################################################################################
 
+
 class DipoleElement(FixedPinElement):
     """This class implements a base class for dipole element."""
-    PINS = ('plus', 'minus')
+
+    PINS = ("plus", "minus")
+
 
 class TwoPortElement(FixedPinElement):
     """This class implements a base class for two-port element."""
-    PINS = ('output_plus', 'output_minus', 'input_plus', 'input_minus')
+
+    PINS = ("output_plus", "output_minus", "input_plus", "input_minus")
+
 
 ####################################################################################################
 
-class SubCircuitElement(NPinElement):
 
+class SubCircuitElement(NPinElement):
     """This class implements a sub-circuit.
 
     Spice syntax:
@@ -152,8 +157,8 @@ class SubCircuitElement(NPinElement):
 
     """
 
-    ALIAS = 'X'
-    PREFIX = 'X'
+    ALIAS = "X"
+    PREFIX = "X"
 
     subcircuit_name = ElementNamePositionalParameter(position=0, key_parameter=False)
 
@@ -177,20 +182,27 @@ class SubCircuitElement(NPinElement):
 
     def copy_to(self, netlist):
 
-        element = self.__class__(netlist, self._name, self.subcircuit_name, *self.node_names, **self.parameters)
+        element = self.__class__(
+            netlist,
+            self._name,
+            self.subcircuit_name,
+            *self.node_names,
+            **self.parameters,
+        )
         # Element.copy_to(self, element)
         return element
 
     ##############################################
 
     def format_spice_parameters(self):
-        """ Return the formatted list of parameters. """
+        """Return the formatted list of parameters."""
 
         spice_parameters = super().format_spice_parameters()
         if self.parameters:
-            spice_parameters += ' ' + join_dict(self.parameters)
+            spice_parameters += " " + join_dict(self.parameters)
 
         return spice_parameters
+
 
 ####################################################################################################
 #
@@ -198,8 +210,8 @@ class SubCircuitElement(NPinElement):
 #
 ####################################################################################################
 
-class Resistor(DipoleElement):
 
+class Resistor(DipoleElement):
     """This class implements a resistor.
 
     Spice syntax:
@@ -243,21 +255,22 @@ class Resistor(DipoleElement):
 
     """
 
-    ALIAS = 'R'
-    PREFIX = 'R'
+    ALIAS = "R"
+    PREFIX = "R"
 
     resistance = FloatPositionalParameter(position=0, key_parameter=False, unit=U_Ω)
-    ac = FloatKeyParameter('ac', unit=U_Ω)
-    multiplier = IntKeyParameter('m')
-    scale = FloatKeyParameter('scale')
-    temperature = FloatKeyParameter('temp', unit=U_Degree)
-    device_temperature = FloatKeyParameter('dtemp', unit=U_Degree)
-    noisy = BoolKeyParameter('noisy')
+    ac = FloatKeyParameter("ac", unit=U_Ω)
+    multiplier = IntKeyParameter("m")
+    scale = FloatKeyParameter("scale")
+    temperature = FloatKeyParameter("temp", unit=U_Degree)
+    device_temperature = FloatKeyParameter("dtemp", unit=U_Degree)
+    noisy = BoolKeyParameter("noisy")
+
 
 ####################################################################################################
 
-class SemiconductorResistor(DipoleElement):
 
+class SemiconductorResistor(DipoleElement):
     """This class implements a Semiconductor resistor.
 
     Spice syntax:
@@ -315,21 +328,23 @@ class SemiconductorResistor(DipoleElement):
 
     """
 
-    ALIAS = 'SemiconductorResistor'
-    PREFIX = 'R'
+    ALIAS = "SemiconductorResistor"
+    PREFIX = "R"
 
     resistance = FloatPositionalParameter(position=0, key_parameter=False, unit=U_Ω)
     model = ModelPositionalParameter(position=1, key_parameter=True)
-    length = FloatKeyParameter('l', unit=U_m)
-    width = FloatKeyParameter('w', unit=U_m)
-    temperature = FloatKeyParameter('temp', unit=U_Degree)
-    device_temperature = FloatKeyParameter('dtemp', unit=U_Degree)
-    multiplier = IntKeyParameter('m')
-    ac = FloatKeyParameter('ac', unit=U_Ω)
-    scale = FloatKeyParameter('scale')
-    noisy = BoolKeyParameter('noisy')
+    length = FloatKeyParameter("l", unit=U_m)
+    width = FloatKeyParameter("w", unit=U_m)
+    temperature = FloatKeyParameter("temp", unit=U_Degree)
+    device_temperature = FloatKeyParameter("dtemp", unit=U_Degree)
+    multiplier = IntKeyParameter("m")
+    ac = FloatKeyParameter("ac", unit=U_Ω)
+    scale = FloatKeyParameter("scale")
+    noisy = BoolKeyParameter("noisy")
+
 
 ####################################################################################################
+
 
 class BehavioralResistor(DipoleElement):
 
@@ -360,17 +375,20 @@ class BehavioralResistor(DipoleElement):
 
     """
 
-    ALIAS = 'BehavioralResistor'
-    PREFIX = 'R'
+    ALIAS = "BehavioralResistor"
+    PREFIX = "R"
 
-    resistance_expression = ExpressionPositionalParameter(position=0, key_parameter=False)
-    tc1 = FloatKeyParameter('tc1')
-    tc2 = FloatKeyParameter('tc2')
+    resistance_expression = ExpressionPositionalParameter(
+        position=0, key_parameter=False
+    )
+    tc1 = FloatKeyParameter("tc1")
+    tc2 = FloatKeyParameter("tc2")
+
 
 ####################################################################################################
 
-class Capacitor(DipoleElement):
 
+class Capacitor(DipoleElement):
     """This class implements a capacitor.
 
     Spice syntax:
@@ -415,21 +433,22 @@ class Capacitor(DipoleElement):
 
     """
 
-    ALIAS = 'C'
-    PREFIX = 'C'
+    ALIAS = "C"
+    PREFIX = "C"
 
     capacitance = FloatPositionalParameter(position=0, key_parameter=False, unit=U_F)
     model = ModelPositionalParameter(position=1, key_parameter=True)
-    multiplier = IntKeyParameter('m')
-    scale = FloatKeyParameter('scale')
-    temperature = FloatKeyParameter('temp', unit=U_Degree)
-    device_temperature = FloatKeyParameter('dtemp', unit=U_Degree)
-    initial_condition = FloatKeyParameter('ic')
+    multiplier = IntKeyParameter("m")
+    scale = FloatKeyParameter("scale")
+    temperature = FloatKeyParameter("temp", unit=U_Degree)
+    device_temperature = FloatKeyParameter("dtemp", unit=U_Degree)
+    initial_condition = FloatKeyParameter("ic")
+
 
 ####################################################################################################
 
-class SemiconductorCapacitor(DipoleElement):
 
+class SemiconductorCapacitor(DipoleElement):
     """This class implements a semiconductor capacitor.
 
     Spice syntax:
@@ -484,23 +503,24 @@ class SemiconductorCapacitor(DipoleElement):
 
     """
 
-    ALIAS = 'SemiconductorCapacitor'
-    PREFIX = 'C'
+    ALIAS = "SemiconductorCapacitor"
+    PREFIX = "C"
 
     capacitance = FloatPositionalParameter(position=0, key_parameter=False, unit=U_F)
     model = ModelPositionalParameter(position=1, key_parameter=True)
-    length = FloatKeyParameter('l', unit=U_m)
-    width = FloatKeyParameter('w', unit=U_m)
-    multiplier = IntKeyParameter('m')
-    scale = FloatKeyParameter('scale')
-    temperature = FloatKeyParameter('temp', unit=U_Degree)
-    device_temperature = FloatKeyParameter('dtemp', unit=U_Degree)
-    initial_condition = FloatKeyParameter('ic')
+    length = FloatKeyParameter("l", unit=U_m)
+    width = FloatKeyParameter("w", unit=U_m)
+    multiplier = IntKeyParameter("m")
+    scale = FloatKeyParameter("scale")
+    temperature = FloatKeyParameter("temp", unit=U_Degree)
+    device_temperature = FloatKeyParameter("dtemp", unit=U_Degree)
+    initial_condition = FloatKeyParameter("ic")
+
 
 ####################################################################################################
 
-class BehavioralCapacitor(DipoleElement):
 
+class BehavioralCapacitor(DipoleElement):
     """This class implements a behavioral capacitor.
 
     Spice syntax:
@@ -526,17 +546,20 @@ class BehavioralCapacitor(DipoleElement):
 
     """
 
-    ALIAS = 'BehavioralCapacitor'
-    PREFIX = 'C'
+    ALIAS = "BehavioralCapacitor"
+    PREFIX = "C"
 
-    capacitance_expression = ExpressionPositionalParameter(position=0, key_parameter=False)
-    tc1 = FloatKeyParameter('tc1')
-    tc2 = FloatKeyParameter('tc2')
+    capacitance_expression = ExpressionPositionalParameter(
+        position=0, key_parameter=False
+    )
+    tc1 = FloatKeyParameter("tc1")
+    tc2 = FloatKeyParameter("tc2")
+
 
 ####################################################################################################
 
-class Inductor(DipoleElement):
 
+class Inductor(DipoleElement):
     """This class implements an inductor.
 
     Spice syntax:
@@ -583,22 +606,23 @@ class Inductor(DipoleElement):
 
     """
 
-    ALIAS = 'L'
-    PREFIX = 'L'
+    ALIAS = "L"
+    PREFIX = "L"
 
     inductance = FloatPositionalParameter(position=0, key_parameter=False, unit=U_H)
     model = ModelPositionalParameter(position=1, key_parameter=True)
-    nt = FloatKeyParameter('nt')
-    multiplier = IntKeyParameter('m')
-    scale = FloatKeyParameter('scale')
-    temperature = FloatKeyParameter('temp', unit=U_Degree)
-    device_temperature = FloatKeyParameter('dtemp', unit=U_Degree)
-    initial_condition = FloatKeyParameter('ic')
+    nt = FloatKeyParameter("nt")
+    multiplier = IntKeyParameter("m")
+    scale = FloatKeyParameter("scale")
+    temperature = FloatKeyParameter("temp", unit=U_Degree)
+    device_temperature = FloatKeyParameter("dtemp", unit=U_Degree)
+    initial_condition = FloatKeyParameter("ic")
+
 
 ####################################################################################################
 
-class BehavioralInductor(DipoleElement):
 
+class BehavioralInductor(DipoleElement):
     """This class implements a behavioral inductor.
 
     Spice syntax:
@@ -624,17 +648,20 @@ class BehavioralInductor(DipoleElement):
 
     """
 
-    ALIAS = 'BehavioralInductor'
-    PREFIX = 'L'
+    ALIAS = "BehavioralInductor"
+    PREFIX = "L"
 
-    inductance_expression = ExpressionPositionalParameter(position=0, key_parameter=False)
-    tc1 = FloatKeyParameter('tc1')
-    tc2 = FloatKeyParameter('tc2')
+    inductance_expression = ExpressionPositionalParameter(
+        position=0, key_parameter=False
+    )
+    tc1 = FloatKeyParameter("tc1")
+    tc2 = FloatKeyParameter("tc2")
+
 
 ####################################################################################################
 
-class CoupledInductor(AnyPinElement):
 
+class CoupledInductor(AnyPinElement):
     """This class implementss a coupled (mutual) inductors.
 
     Spice syntax:
@@ -655,16 +682,16 @@ class CoupledInductor(AnyPinElement):
 
     """
 
-    ALIAS = 'K'
-    PREFIX = 'K'
+    ALIAS = "K"
+    PREFIX = "K"
 
     inductor1 = ElementNamePositionalParameter(position=0, key_parameter=False)
     inductor2 = ElementNamePositionalParameter(position=1, key_parameter=False)
     coupling_factor = FloatPositionalParameter(position=2, key_parameter=False)
 
-    _logger = _module_logger.getChild('CoupledInductor')
+    _logger = _module_logger.getChild("CoupledInductor")
 
- ##############################################
+    ##############################################
 
     def __init__(self, name, *args, **kwargs):
 
@@ -676,19 +703,20 @@ class CoupledInductor(AnyPinElement):
                 self.netlist.element(inductor)
             except KeyError:
                 try:
-                    inductor = 'L' + inductor
+                    inductor = "L" + inductor
                     self.netlist.element(inductor)
-                    self._logger.info('Prefixed element {}'.format(inductor))
+                    self._logger.info("Prefixed element {}".format(inductor))
                 except KeyError:
-                    raise ValueError('Element with name {} not found'.format(inductor))
+                    raise ValueError("Element with name {} not found".format(inductor))
             # Fixme: str or Element instance ?
             self._inductors.append(inductor)
         self.inductor1, self.inductor2 = self._inductors
 
+
 ####################################################################################################
 
-class VoltageControlledSwitch(TwoPortElement):
 
+class VoltageControlledSwitch(TwoPortElement):
     """This class implements a voltage controlled switch.
 
     Spice syntax:
@@ -711,17 +739,18 @@ class VoltageControlledSwitch(TwoPortElement):
 
     """
 
-    ALIAS = 'S'
-    LONG_ALIAS = 'VCS'
-    PREFIX = 'S'
+    ALIAS = "S"
+    LONG_ALIAS = "VCS"
+    PREFIX = "S"
 
     model = ModelPositionalParameter(position=0, key_parameter=True)
     initial_state = InitialStatePositionalParameter(position=1, key_parameter=True)
 
+
 ####################################################################################################
 
-class CurrentControlledSwitch(DipoleElement):
 
+class CurrentControlledSwitch(DipoleElement):
     """This class implements a current controlled switch.
 
     Spice syntax:
@@ -748,13 +777,14 @@ class CurrentControlledSwitch(DipoleElement):
 
     """
 
-    ALIAS = 'W'
-    LONG_ALIAS = 'CCS'
-    PREFIX = 'W'
+    ALIAS = "W"
+    LONG_ALIAS = "CCS"
+    PREFIX = "W"
 
     source = ElementNamePositionalParameter(position=0, key_parameter=True)
     model = ModelPositionalParameter(position=1, key_parameter=True)
     initial_state = InitialStatePositionalParameter(position=2, key_parameter=True)
+
 
 ####################################################################################################
 #
@@ -762,8 +792,8 @@ class CurrentControlledSwitch(DipoleElement):
 #
 ####################################################################################################
 
-class VoltageSource(DipoleElement):
 
+class VoltageSource(DipoleElement):
     """This class implements an independent sources for voltage.
 
     Spice syntax:
@@ -780,16 +810,17 @@ class VoltageSource(DipoleElement):
 
     """
 
-    ALIAS = 'V'
-    PREFIX = 'V'
+    ALIAS = "V"
+    PREFIX = "V"
 
     # Fixme: ngspice manual doesn't describe well the syntax
     dc_value = FloatPositionalParameter(position=0, key_parameter=False, unit=U_V)
 
+
 ####################################################################################################
 
-class CurrentSource(DipoleElement):
 
+class CurrentSource(DipoleElement):
     """This class implements an independent sources for current.
 
     Spice syntax:
@@ -806,16 +837,17 @@ class CurrentSource(DipoleElement):
 
     """
 
-    ALIAS = 'I'
-    PREFIX = 'I'
+    ALIAS = "I"
+    PREFIX = "I"
 
     # Fixme: ngspice manual doesn't describe well the syntax
     dc_value = FloatPositionalParameter(position=0, key_parameter=False, unit=U_A)
 
+
 ####################################################################################################
 
-class VoltageControlledCurrentSource(TwoPortElement):
 
+class VoltageControlledCurrentSource(TwoPortElement):
     """This class implements a linear voltage-controlled current sources (VCCS).
 
     Spice syntax:
@@ -835,16 +867,17 @@ class VoltageControlledCurrentSource(TwoPortElement):
 
     """
 
-    ALIAS = 'VCCS'
-    PREFIX = 'G'
+    ALIAS = "VCCS"
+    PREFIX = "G"
 
     transconductance = ExpressionPositionalParameter(position=0, key_parameter=False)
-    multiplier = IntKeyParameter('m')
+    multiplier = IntKeyParameter("m")
+
 
 ####################################################################################################
 
-class VoltageControlledVoltageSource(TwoPortElement):
 
+class VoltageControlledVoltageSource(TwoPortElement):
     """This class implements a linear voltage-controlled voltage sources (VCVS).
 
     Spice syntax:
@@ -861,15 +894,16 @@ class VoltageControlledVoltageSource(TwoPortElement):
 
     """
 
-    ALIAS = 'VCVS'
-    PREFIX = 'E'
+    ALIAS = "VCVS"
+    PREFIX = "E"
 
     voltage_gain = ExpressionPositionalParameter(position=0, key_parameter=False)
 
+
 ####################################################################################################
 
-class CurrentControlledCurrentSource(DipoleElement):
 
+class CurrentControlledCurrentSource(DipoleElement):
     """This class implements a linear current-controlled current sources (CCCS).
 
     Spice syntax:
@@ -891,18 +925,19 @@ class CurrentControlledCurrentSource(DipoleElement):
 
     """
 
-    ALIAS = 'F'
-    LONG_ALIAS = 'CCCS'
-    PREFIX = 'F'
+    ALIAS = "F"
+    LONG_ALIAS = "CCCS"
+    PREFIX = "F"
 
     source = ElementNamePositionalParameter(position=0, key_parameter=False)
     current_gain = ExpressionPositionalParameter(position=1, key_parameter=False)
-    multiplier = IntKeyParameter('m')
+    multiplier = IntKeyParameter("m")
+
 
 ####################################################################################################
 
-class CurrentControlledVoltageSource(DipoleElement):
 
+class CurrentControlledVoltageSource(DipoleElement):
     """This class implements a linear current-controlled voltage sources (CCVS).
 
     Spice syntax:
@@ -921,12 +956,13 @@ class CurrentControlledVoltageSource(DipoleElement):
 
     """
 
-    ALIAS = 'H'
-    LONG_ALIAS = 'CCVS'
-    PREFIX = 'H'
+    ALIAS = "H"
+    LONG_ALIAS = "CCVS"
+    PREFIX = "H"
 
     source = ElementNamePositionalParameter(position=0, key_parameter=False)
     transresistance = ExpressionPositionalParameter(position=1, key_parameter=False)
+
 
 ####################################################################################################
 #
@@ -934,8 +970,8 @@ class CurrentControlledVoltageSource(DipoleElement):
 #
 ####################################################################################################
 
-class BehavioralSource(DipoleElement):
 
+class BehavioralSource(DipoleElement):
     """This class implements a behavioral source.
 
     Spice syntax:
@@ -978,20 +1014,21 @@ class BehavioralSource(DipoleElement):
 
     """
 
-    ALIAS = 'B'
-    PREFIX = 'B'
+    ALIAS = "B"
+    PREFIX = "B"
 
-    current_expression = ExpressionKeyParameter('i')
-    voltage_expression = ExpressionKeyParameter('v')
-    tc1 = FloatKeyParameter('tc1')
-    tc2 = FloatKeyParameter('tc2')
-    temperature = FloatKeyParameter('temp', unit=U_Degree)
-    device_temperature = FloatKeyParameter('dtemp', unit=U_Degree)
+    current_expression = ExpressionKeyParameter("i")
+    voltage_expression = ExpressionKeyParameter("v")
+    tc1 = FloatKeyParameter("tc1")
+    tc2 = FloatKeyParameter("tc2")
+    temperature = FloatKeyParameter("temp", unit=U_Degree)
+    device_temperature = FloatKeyParameter("dtemp", unit=U_Degree)
+
 
 ####################################################################################################
 
-class NonLinearVoltageSource(DipoleElement):
 
+class NonLinearVoltageSource(DipoleElement):
     """This class implements a non-linear voltage source.
 
     .. warning:: Partially implemented
@@ -1012,11 +1049,11 @@ class NonLinearVoltageSource(DipoleElement):
 
     """
 
-    ALIAS = 'NonLinearVoltageSource'
-    PREFIX = 'E'
+    ALIAS = "NonLinearVoltageSource"
+    PREFIX = "E"
 
     # Fixme:
-    VALID_KWARGS = ('expression', 'table')
+    VALID_KWARGS = ("expression", "table")
 
     ##############################################
 
@@ -1024,8 +1061,8 @@ class NonLinearVoltageSource(DipoleElement):
 
         super().__init__(name, *args, **kwargs)
 
-        self.expression = kwargs.get('expression', None)
-        self.table = kwargs.get('table', None)
+        self.expression = kwargs.get("expression", None)
+        self.table = kwargs.get("table", None)
 
     ##############################################
 
@@ -1035,14 +1072,17 @@ class NonLinearVoltageSource(DipoleElement):
         # Fixme: expression
         if self.table is not None:
             # TABLE {expression} = (x0, y0) (x1, y1) ...
-            table = ['({}, {})'.format(str_spice(x), str_spice(y)) for x, y in self.table]
-            spice_element += ' TABLE {%s} = %s' % (self.expression, join_list(table))
+            table = [
+                "({}, {})".format(str_spice(x), str_spice(y)) for x, y in self.table
+            ]
+            spice_element += " TABLE {%s} = %s" % (self.expression, join_list(table))
         return spice_element
+
 
 ####################################################################################################
 
-class NonLinearCurrentSource(DipoleElement):
 
+class NonLinearCurrentSource(DipoleElement):
     """This class implements a non-linear current sources.
 
     .. warning:: Partially implemented
@@ -1064,10 +1104,11 @@ class NonLinearCurrentSource(DipoleElement):
 
     """
 
-    ALIAS = 'NonLinearCurrentSource'
-    PREFIX = 'G'
+    ALIAS = "NonLinearCurrentSource"
+    PREFIX = "G"
 
     transconductance = ExpressionPositionalParameter(position=0, key_parameter=False)
+
 
 ####################################################################################################
 #
@@ -1075,8 +1116,8 @@ class NonLinearCurrentSource(DipoleElement):
 #
 ####################################################################################################
 
-class Diode(FixedPinElement):
 
+class Diode(FixedPinElement):
     """This class implements a junction diode.
 
     Spice syntax:
@@ -1126,18 +1167,19 @@ class Diode(FixedPinElement):
 
     """
 
-    ALIAS = 'D'
-    PREFIX = 'D'
-    PINS = (('cathode', 'plus'), ('anode', 'minus'))
+    ALIAS = "D"
+    PREFIX = "D"
+    PINS = (("cathode", "plus"), ("anode", "minus"))
 
     model = ModelPositionalParameter(position=0, key_parameter=True)
-    area = FloatKeyParameter('area')
-    multiplier = IntKeyParameter('m')
-    pj = FloatKeyParameter('pj')
-    off = FlagParameter('off')
-    ic = FloatPairKeyParameter('ic')
-    temperature = FloatKeyParameter('temp', unit=U_Degree)
-    device_temperature = FloatKeyParameter('dtemp', unit=U_Degree)
+    area = FloatKeyParameter("area")
+    multiplier = IntKeyParameter("m")
+    pj = FloatKeyParameter("pj")
+    off = FlagParameter("off")
+    ic = FloatPairKeyParameter("ic")
+    temperature = FloatKeyParameter("temp", unit=U_Degree)
+    device_temperature = FloatKeyParameter("dtemp", unit=U_Degree)
+
 
 ####################################################################################################
 #
@@ -1145,8 +1187,8 @@ class Diode(FixedPinElement):
 #
 ####################################################################################################
 
-class BipolarJunctionTransistor(FixedPinElement):
 
+class BipolarJunctionTransistor(FixedPinElement):
     """This class implements a bipolar junction transistor.
 
     Spice syntax:
@@ -1202,20 +1244,21 @@ class BipolarJunctionTransistor(FixedPinElement):
 
     # Fixme: off doesn't fit in kwargs !
 
-    ALIAS = 'Q'
-    LONG_ALIAS = 'BJT'
-    PREFIX = 'Q'
-    PINS = ('collector', 'base', 'emitter', OptionalPin('substrate'))
+    ALIAS = "Q"
+    LONG_ALIAS = "BJT"
+    PREFIX = "Q"
+    PINS = ("collector", "base", "emitter", OptionalPin("substrate"))
 
     model = ModelPositionalParameter(position=0, key_parameter=True)
-    area = FloatKeyParameter('area')
-    areac = FloatKeyParameter('areac')
-    areab = FloatKeyParameter('areab')
-    multiplier = IntKeyParameter('m')
-    off = FlagParameter('off')
-    ic = FloatPairKeyParameter('ic')
-    temperature = FloatKeyParameter('temp', unit=U_Degree)
-    device_temperature = FloatKeyParameter('dtemp', unit=U_Degree)
+    area = FloatKeyParameter("area")
+    areac = FloatKeyParameter("areac")
+    areab = FloatKeyParameter("areab")
+    multiplier = IntKeyParameter("m")
+    off = FlagParameter("off")
+    ic = FloatPairKeyParameter("ic")
+    temperature = FloatKeyParameter("temp", unit=U_Degree)
+    device_temperature = FloatKeyParameter("dtemp", unit=U_Degree)
+
 
 ####################################################################################################
 #
@@ -1223,11 +1266,12 @@ class BipolarJunctionTransistor(FixedPinElement):
 #
 ####################################################################################################
 
+
 class JfetElement(FixedPinElement):
-    PINS = ('drain', 'gate', 'source')
+    PINS = ("drain", "gate", "source")
+
 
 class JunctionFieldEffectTransistor(JfetElement):
-
     """This class implements a bipolar junction transistor.
 
     Spice syntax:
@@ -1265,16 +1309,17 @@ class JunctionFieldEffectTransistor(JfetElement):
 
     # Fixme: off doesn't fit in kwargs !
 
-    ALIAS = 'J'
-    LONG_ALIAS = 'JFET'
-    PREFIX = 'J'
+    ALIAS = "J"
+    LONG_ALIAS = "JFET"
+    PREFIX = "J"
 
     model = ModelPositionalParameter(position=0, key_parameter=True)
-    area = FloatKeyParameter('area')
-    multiplier = IntKeyParameter('m')
-    off = FlagParameter('off')
-    ic = FloatPairKeyParameter('ic')
-    temperature = FloatKeyParameter('temp', unit=U_Degree)
+    area = FloatKeyParameter("area")
+    multiplier = IntKeyParameter("m")
+    off = FlagParameter("off")
+    ic = FloatPairKeyParameter("ic")
+    temperature = FloatKeyParameter("temp", unit=U_Degree)
+
 
 ####################################################################################################
 #
@@ -1282,8 +1327,8 @@ class JunctionFieldEffectTransistor(JfetElement):
 #
 ####################################################################################################
 
-class Mesfet(JfetElement):
 
+class Mesfet(JfetElement):
     """This class implements a Metal Semiconductor Field Effect Transistor.
 
     Spice syntax:
@@ -1316,15 +1361,16 @@ class Mesfet(JfetElement):
 
     # Fixme: off doesn't fit in kwargs !
 
-    ALIAS = 'Z'
-    LONG_ALIAS = 'MESFET'
-    PREFIX = 'Z'
+    ALIAS = "Z"
+    LONG_ALIAS = "MESFET"
+    PREFIX = "Z"
 
     model = ModelPositionalParameter(position=0, key_parameter=True)
-    area = FloatKeyParameter('area')
-    multiplier = IntKeyParameter('m')
-    off = FlagParameter('off')
-    ic = FloatPairKeyParameter('ic')
+    area = FloatKeyParameter("area")
+    multiplier = IntKeyParameter("m")
+    off = FlagParameter("off")
+    ic = FloatPairKeyParameter("ic")
+
 
 ####################################################################################################
 #
@@ -1332,8 +1378,8 @@ class Mesfet(JfetElement):
 #
 ####################################################################################################
 
-class Mosfet(FixedPinElement):
 
+class Mosfet(FixedPinElement):
     """This class implements a Metal Oxide Field Effect Transistor.
 
     Spice syntax:
@@ -1420,27 +1466,28 @@ class Mosfet(FixedPinElement):
 
     # Fixme: off doesn't fit in kwargs !
 
-    ALIAS = 'M'
-    LONG_ALIAS = 'MOSFET'
-    PREFIX = 'M'
-    PINS = ('drain', 'gate', 'source', ('bulk', 'substrate'))
+    ALIAS = "M"
+    LONG_ALIAS = "MOSFET"
+    PREFIX = "M"
+    PINS = ("drain", "gate", "source", ("bulk", "substrate"))
 
     model = ModelPositionalParameter(position=0, key_parameter=True)
-    multiplier = IntKeyParameter('m')
-    length = FloatKeyParameter('l', unit=U_m)
-    width = FloatKeyParameter('w', unit=U_m)
-    drain_area = FloatKeyParameter('ad')
-    source_area = FloatKeyParameter('as')
-    drain_perimeter = FloatKeyParameter('pd')
-    source_perimeter = FloatKeyParameter('ps')
-    drain_number_square = FloatKeyParameter('nrd')
-    source_number_square = FloatKeyParameter('nrs')
-    off = FlagParameter('off')
-    ic = FloatTripletKeyParameter('ic')
-    temperature = FloatKeyParameter('temp', unit=U_Degree)
+    multiplier = IntKeyParameter("m")
+    length = FloatKeyParameter("l", unit=U_m)
+    width = FloatKeyParameter("w", unit=U_m)
+    drain_area = FloatKeyParameter("ad")
+    source_area = FloatKeyParameter("as")
+    drain_perimeter = FloatKeyParameter("pd")
+    source_perimeter = FloatKeyParameter("ps")
+    drain_number_square = FloatKeyParameter("nrd")
+    source_number_square = FloatKeyParameter("nrs")
+    off = FlagParameter("off")
+    ic = FloatTripletKeyParameter("ic")
+    temperature = FloatKeyParameter("temp", unit=U_Degree)
 
     # only for Xyce
-    nfin = IntKeyParameter('nfin')
+    nfin = IntKeyParameter("nfin")
+
 
 ####################################################################################################
 #
@@ -1448,8 +1495,8 @@ class Mosfet(FixedPinElement):
 #
 ####################################################################################################
 
-class LosslessTransmissionLine(TwoPortElement):
 
+class LosslessTransmissionLine(TwoPortElement):
     """This class implements a lossless transmission line.
 
     Spice syntax:
@@ -1497,13 +1544,13 @@ class LosslessTransmissionLine(TwoPortElement):
 
     """
 
-    ALIAS = 'TransmissionLine'
-    PREFIX = 'T'
+    ALIAS = "TransmissionLine"
+    PREFIX = "T"
 
-    impedance = FloatKeyParameter('Z0', default=50, unit=U_Ω)
-    time_delay = FloatKeyParameter('TD', unit=U_s)
-    frequency = FloatKeyParameter('F', unit=U_Hz)
-    normalized_length = FloatKeyParameter('NL')
+    impedance = FloatKeyParameter("Z0", default=50, unit=U_Ω)
+    time_delay = FloatKeyParameter("TD", unit=U_s)
+    frequency = FloatKeyParameter("F", unit=U_Hz)
+    normalized_length = FloatKeyParameter("NL")
 
     ##############################################
 
@@ -1511,14 +1558,20 @@ class LosslessTransmissionLine(TwoPortElement):
 
         super().__init__(name, *args, **kwargs)
 
-        if not (self.has_parameter('time_delay') or
-                (self.has_parameter('frequency') and self.has_parameter('normalized_length'))):
-            raise NameError('Either TD or F, NL must be specified')
+        if not (
+            self.has_parameter("time_delay")
+            or (
+                self.has_parameter("frequency")
+                and self.has_parameter("normalized_length")
+            )
+        ):
+            raise NameError("Either TD or F, NL must be specified")
+
 
 ####################################################################################################
 
-class LossyTransmission(TwoPortElement):
 
+class LossyTransmission(TwoPortElement):
     """This class implements lossy transmission lines.
 
     Spice syntax:
@@ -1535,15 +1588,16 @@ class LossyTransmission(TwoPortElement):
 
     """
 
-    ALIAS = 'O'
-    PREFIX = 'O'
+    ALIAS = "O"
+    PREFIX = "O"
 
     model = ModelPositionalParameter(position=0, key_parameter=True)
 
+
 ####################################################################################################
 
-class CoupledMulticonductorLine(NPinElement):
 
+class CoupledMulticonductorLine(NPinElement):
     """This class implements coupled multiconductor lines.
 
     Spice syntax:
@@ -1564,11 +1618,11 @@ class CoupledMulticonductorLine(NPinElement):
 
     """
 
-    ALIAS = 'P'
-    PREFIX = 'P'
+    ALIAS = "P"
+    PREFIX = "P"
 
     model = ModelPositionalParameter(position=0, key_parameter=True)
-    length = FloatKeyParameter('len', unit=U_m)
+    length = FloatKeyParameter("len", unit=U_m)
 
     ##############################################
 
@@ -1576,10 +1630,11 @@ class CoupledMulticonductorLine(NPinElement):
 
         super().__init__(netlist, name, nodes, **parameters)
 
+
 ####################################################################################################
 
-class UniformDistributedRCLine(FixedPinElement):
 
+class UniformDistributedRCLine(FixedPinElement):
     """This class implements uniform distributed RC lines.
 
     Spice syntax:
@@ -1603,15 +1658,17 @@ class UniformDistributedRCLine(FixedPinElement):
 
     """
 
-    ALIAS = 'U'
-    PREFIX = 'U'
-    PINS = ('output', 'input', 'capacitance_node')
+    ALIAS = "U"
+    PREFIX = "U"
+    PINS = ("output", "input", "capacitance_node")
 
     model = ModelPositionalParameter(position=0, key_parameter=True)
-    length = FloatKeyParameter('l', unit=U_m)
-    number_of_lumps = IntKeyParameter('n')
+    length = FloatKeyParameter("l", unit=U_m)
+    number_of_lumps = IntKeyParameter("n")
+
 
 ####################################################################################################
+
 
 class SingleLossyTransmissionLine(TwoPortElement):
 
@@ -1637,11 +1694,12 @@ class SingleLossyTransmissionLine(TwoPortElement):
 
     """
 
-    ALIAS = 'Y'
-    PREFIX = 'Y'
+    ALIAS = "Y"
+    PREFIX = "Y"
 
     model = ModelPositionalParameter(position=0, key_parameter=True)
-    length = FloatKeyParameter('len', unit=U_m)
+    length = FloatKeyParameter("len", unit=U_m)
+
 
 ####################################################################################################
 #
@@ -1649,8 +1707,8 @@ class SingleLossyTransmissionLine(TwoPortElement):
 #
 ####################################################################################################
 
-class XSpiceElement(NPinElement):
 
+class XSpiceElement(NPinElement):
     """This class implements a sub-circuit.
 
     Spice syntax:
@@ -1679,8 +1737,8 @@ class XSpiceElement(NPinElement):
     .. warning:: Partially implemented.
     """
 
-    ALIAS = 'A'
-    PREFIX = 'A'
+    ALIAS = "A"
+    PREFIX = "A"
 
     model = ModelPositionalParameter(position=0, key_parameter=True)
 
@@ -1692,21 +1750,22 @@ class XSpiceElement(NPinElement):
 
         super().__init__(netlist, name, nodes, **parameters)
 
+
 ####################################################################################################
 #
 # GSS
 #
 ####################################################################################################
 
-class GSSElement(NPinElement):
 
+class GSSElement(NPinElement):
     """This class implements GSS device.
 
     .. warning:: Not implemented
     """
 
-    ALIAS = 'N'
-    PREFIX = 'N'
+    ALIAS = "N"
+    PREFIX = "N"
 
     ##############################################
 

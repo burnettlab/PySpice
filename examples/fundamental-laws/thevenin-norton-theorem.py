@@ -72,7 +72,8 @@ simulator = thevenin_circuit.simulator(temperature=25, nominal_temperature=25)
 analysis = simulator.operating_point()
 
 load_node = analysis.load
-print('Node {}: {:5.2f} V'.format(str(load_node), float(load_node)))
+assert len(load_node) == 1
+print('Node {}: {:5.2f} V'.format(str(load_node), float(load_node[0])))
 #o#
 
 norton_circuit = Circuit('Norton Representation')
@@ -85,6 +86,8 @@ norton_circuit.R('load', 'load', norton_circuit.gnd, thevenin_circuit.Rload.resi
 simulator = norton_circuit.simulator(temperature=25, nominal_temperature=25)
 analysis = simulator.operating_point()
 
+
 load_node = analysis.load
-print('Node {}: {:5.2f} V'.format(str(load_node), float(load_node)))
+assert len(load_node) == 1
+print('Node {}: {:5.2f} V'.format(str(load_node), float(load_node[0])))
 #o#

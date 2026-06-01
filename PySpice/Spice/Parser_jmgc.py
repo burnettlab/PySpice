@@ -32,15 +32,15 @@ SPICE is case insensitive.
 
 ####################################################################################################
 
-from collections import OrderedDict
 import logging
 import os
+from collections import OrderedDict
+
 import regex
 
 ####################################################################################################
-
 from .ElementParameter import FlagParameter
-from .Netlist import ElementParameterMetaClass, Circuit, SubCircuit
+from .Netlist import Circuit, ElementParameterMetaClass, SubCircuit
 
 ####################################################################################################
 
@@ -48,13 +48,15 @@ _module_logger = logging.getLogger(__name__)
 
 ####################################################################################################
 
+
 class ParseError(NameError):
     pass
 
+
 ####################################################################################################
 
-class PrefixData:
 
+class PrefixData:
     """This class represents a device prefix."""
 
     ##############################################
@@ -69,8 +71,12 @@ class PrefixData:
         has_optionals = False
         for element_class in classes:
             number_of_positionals = element_class.number_of_positional_parameters
-            number_of_positionals_min = min(number_of_positionals_min, number_of_positionals)
-            number_of_positionals_max = max(number_of_positionals_max, number_of_positionals)
+            number_of_positionals_min = min(
+                number_of_positionals_min, number_of_positionals
+            )
+            number_of_positionals_max = max(
+                number_of_positionals_max, number_of_positionals
+            )
             has_optionals = max(has_optionals, bool(element_class.optional_parameters))
 
         self.number_of_positionals_min = number_of_positionals_min
@@ -78,7 +84,10 @@ class PrefixData:
         self.has_optionals = has_optionals
 
         self.multi_devices = len(classes) > 1
-        self.has_variable_number_of_pins = prefix in ('Q', 'X')  # NPinElement, Q has 3 to 4 pins
+        self.has_variable_number_of_pins = prefix in (
+            "Q",
+            "X",
+        )  # NPinElement, Q has 3 to 4 pins
         if self.has_variable_number_of_pins:
             self.number_of_pins = None
         else:
@@ -109,6 +118,7 @@ class PrefixData:
             return self.classes[0]
         else:
             raise NameError()
+
 
 ####################################################################################################
 
@@ -153,8 +163,8 @@ for prefix, classes in ElementParameterMetaClass._classes.items():
 
 ####################################################################################################
 
-class Statement:
 
+class Statement:
     """This base class implements a statement, in fact a line in a Spice netlist."""
 
     ##############################################
@@ -167,7 +177,7 @@ class Statement:
     ##############################################
 
     def __repr__(self):
-        return '{} {}'.format(self.__class__.__name__, repr(self._line))
+        return "{} {}".format(self.__class__.__name__, repr(self._line))
 
     ##############################################
 
@@ -178,7 +188,7 @@ class Statement:
             else:
                 return "'{}'".format(x)
         else:
-            return ''
+            return ""
 
     ##############################################
 
@@ -188,30 +198,35 @@ class Statement:
     ##############################################
 
     def kwargs_to_python(self, kwargs):
-        return ['{}={}'.format(key, self.value_to_python(value))
-                for key, value in kwargs.items()]
+        return [
+            "{}={}".format(key, self.value_to_python(value))
+            for key, value in kwargs.items()
+        ]
 
     ##############################################
 
     def join_args(self, args):
-        return ', '.join(args)
+        return ", ".join(args)
+
 
 ####################################################################################################
+
 
 class Comment(Statement):
     pass
 
+
 ####################################################################################################
 
-class Title(Statement):
 
+class Title(Statement):
     """This class implements a title definition."""
 
     ##############################################
 
     def __init__(self, line):
-        super().__init__(line, statement='title')
-        self._title = self._line.right_of('.title')
+        super().__init__(line, statement="title")
+        self._title = self._line.right_of(".title")
 
     ##############################################
 
@@ -221,19 +236,20 @@ class Title(Statement):
     ##############################################
 
     def __repr__(self):
-        return 'Title {}'.format(self._title)
+        return "Title {}".format(self._title)
+
 
 ####################################################################################################
 
-class Include(Statement):
 
+class Include(Statement):
     """This class implements a include definition."""
 
     ##############################################
 
     def __init__(self, line):
-        super().__init__(line, statement='include')
-        self._include = self._line.right_of('.include')
+        super().__init__(line, statement="include")
+        self._include = self._line.right_of(".include")
 
     ##############################################
 
@@ -243,17 +259,18 @@ class Include(Statement):
     ##############################################
 
     def __repr__(self):
-        return 'Include {}'.format(self._include)
+        return "Include {}".format(self._include)
 
     ##############################################
 
     def to_python(self, netlist_name):
-        return '{}.include({})'.format(netlist_name, self._include) + os.linesep
+        return "{}.include({})".format(netlist_name, self._include) + os.linesep
+
 
 ####################################################################################################
 
-class Model(Statement):
 
+class Model(Statement):
     """This class implements a model definition.
 
     Spice syntax::
@@ -265,9 +282,9 @@ class Model(Statement):
     ##############################################
 
     def __init__(self, line):
-        super().__init__(line, statement='model')
+        super().__init__(line, statement="model")
 
-        base, self._parameters = line.split_keyword('.model')
+        base, self._parameters = line.split_keyword(".model")
         self._name, self._model_type = base
         self._name = self._name.lower()
 
@@ -281,24 +298,28 @@ class Model(Statement):
     ##############################################
 
     def __repr__(self):
-        return 'Model {} {} {}'.format(self._name, self._model_type, self._parameters)
+        return "Model {} {} {}".format(self._name, self._model_type, self._parameters)
 
     ##############################################
 
     def to_python(self, netlist_name):
         args = self.values_to_python((self._name, self._model_type))
         kwargs = self.kwargs_to_python(self._parameters)
-        return '{}.model({})'.format(netlist_name, self.join_args(args + kwargs)) + os.linesep
+        return (
+            "{}.model({})".format(netlist_name, self.join_args(args + kwargs))
+            + os.linesep
+        )
 
     ##############################################
 
     def build(self, circuit):
         return circuit.model(self._name, self._model_type, **self._parameters)
 
+
 ####################################################################################################
 
-class Parameter(Statement):
 
+class Parameter(Statement):
     """This class implements a parameter definition.
 
     Spice syntax::
@@ -310,12 +331,12 @@ class Parameter(Statement):
     ##############################################
 
     def __init__(self, line):
-        super().__init__(line, statement='param')
+        super().__init__(line, statement="param")
 
-        text = line.right_of('.param').strip().lower()  # Fixme: lower ???
-        idx = text.find('=')
+        text = line.right_of(".param").strip().lower()  # Fixme: lower ???
+        idx = text.find("=")
         self._name = text[:idx].strip()
-        self._value = text[idx + 1:].strip()
+        self._value = text[idx + 1 :].strip()
 
     ##############################################
 
@@ -327,23 +348,25 @@ class Parameter(Statement):
     ##############################################
 
     def __repr__(self):
-        return 'Param {}={}'.format(self._name, self._value)
+        return "Param {}={}".format(self._name, self._value)
 
     ##############################################
 
     def to_python(self, netlist_name):
         args = self.values_to_python((self._name, self._value))
         # Fixme: linesep here ???
-        return '{}.param({})'.format(netlist_name, self.join_args(args)) + os.linesep
+        return "{}.param({})".format(netlist_name, self.join_args(args)) + os.linesep
 
     ##############################################
 
     def build(self, circuit):
         circuit.parameter(self._name, self._value)
 
+
 ####################################################################################################
 
 # Review: HERE
+
 
 class CircuitStatement(Statement):
 
@@ -361,13 +384,13 @@ class CircuitStatement(Statement):
 
     def __init__(self, title):
 
-        super().__init__(title, statement='title')
+        super().__init__(title, statement="title")
 
         # Review: Title
-        title_statement = '.title '
+        title_statement = ".title "
         self._title = str(title)
         if self._title.startswith(title_statement):
-            self._title = self._title[len(title_statement):]
+            self._title = self._title[len(title_statement) :]
 
         self._statements = []
         self._subcircuits = []
@@ -406,10 +429,15 @@ class CircuitStatement(Statement):
     ##############################################
 
     def __repr__(self):
-        text = 'Circuit {}'.format(self._title) + os.linesep
+        text = "Circuit {}".format(self._title) + os.linesep
         text += os.linesep.join([repr(model) for model in self._models]) + os.linesep
-        text += os.linesep.join([repr(subcircuit) for subcircuit in self._subcircuits]) + os.linesep
-        text += os.linesep.join(['  ' + repr(statement) for statement in self._statements])
+        text += (
+            os.linesep.join([repr(subcircuit) for subcircuit in self._subcircuits])
+            + os.linesep
+        )
+        text += os.linesep.join(
+            ["  " + repr(statement) for statement in self._statements]
+        )
         return text
 
     ##############################################
@@ -445,10 +473,13 @@ class CircuitStatement(Statement):
     ##############################################
 
     def to_python(self, ground=0):
-        subcircuit_name = 'subcircuit_' + self._name
+        subcircuit_name = "subcircuit_" + self._name
         args = self.values_to_python([subcircuit_name] + self._nodes)
-        source_code = ''
-        source_code += '{} = SubCircuit({})'.format(subcircuit_name, self.join_args(args)) + os.linesep
+        source_code = ""
+        source_code += (
+            "{} = SubCircuit({})".format(subcircuit_name, self.join_args(args))
+            + os.linesep
+        )
         source_code += SpiceParser.netlist_to_python(subcircuit_name, self, ground)
         return source_code
 
@@ -468,10 +499,11 @@ class CircuitStatement(Statement):
                 statement.build(circuit, ground)
         return circuit
 
+
 ####################################################################################################
 
-class SubCircuitStatement(Statement):
 
+class SubCircuitStatement(Statement):
     """This class implements a sub-circuit definition.
 
     Spice syntax::
@@ -484,12 +516,12 @@ class SubCircuitStatement(Statement):
 
     def __init__(self, line):
 
-        super().__init__(line, statement='subckt')
+        super().__init__(line, statement="subckt")
 
         # Fixme
-        parameters, dict_parameters = self._line.split_keyword('.subckt')
+        parameters, dict_parameters = self._line.split_keyword(".subckt")
         # Review: syntax ???
-        if parameters[-1].lower() == 'params:':
+        if parameters[-1].lower() == "params:":
             parameters = parameters[:-1]
         self._name, self._nodes = parameters[0], parameters[1:]
         self._name = self._name.lower()
@@ -533,12 +565,22 @@ class SubCircuitStatement(Statement):
 
     def __repr__(self):
         if self._parameters:
-            text = 'SubCircuit {} {} Parameters: {}'.format(self._name, self._nodes, self._parameters) + os.linesep
+            text = (
+                "SubCircuit {} {} Parameters: {}".format(
+                    self._name, self._nodes, self._parameters
+                )
+                + os.linesep
+            )
         else:
-            text = 'SubCircuit {} {}'.format(self._name, self._nodes) + os.linesep
+            text = "SubCircuit {} {}".format(self._name, self._nodes) + os.linesep
         text += os.linesep.join([repr(model) for model in self._models]) + os.linesep
-        text += os.linesep.join([repr(subcircuit) for subcircuit in self._subcircuits]) + os.linesep
-        text += os.linesep.join(['  ' + repr(statement) for statement in self._statements])
+        text += (
+            os.linesep.join([repr(subcircuit) for subcircuit in self._subcircuits])
+            + os.linesep
+        )
+        text += os.linesep.join(
+            ["  " + repr(statement) for statement in self._statements]
+        )
         return text
 
     ##############################################
@@ -574,10 +616,13 @@ class SubCircuitStatement(Statement):
     ##############################################
 
     def to_python(self, ground=0):
-        subcircuit_name = 'subcircuit_' + self._name
+        subcircuit_name = "subcircuit_" + self._name
         args = self.values_to_python([subcircuit_name] + self._nodes)
-        source_code = ''
-        source_code += '{} = SubCircuit({})'.format(subcircuit_name, self.join_args(args)) + os.linesep
+        source_code = ""
+        source_code += (
+            "{} = SubCircuit({})".format(subcircuit_name, self.join_args(args))
+            + os.linesep
+        )
         source_code += SpiceParser.netlist_to_python(subcircuit_name, self, ground)
         return source_code
 
@@ -598,17 +643,18 @@ class SubCircuitStatement(Statement):
                 statement.build(subcircuit, ground)
         return subcircuit
 
+
 ####################################################################################################
 
-class Element(Statement):
 
+class Element(Statement):
     """This class implements an element definition.
 
     "{ expression }" are allowed in device line.
 
     """
 
-    _logger = _module_logger.getChild('Element')
+    _logger = _module_logger.getChild("Element")
 
     ##############################################
 
@@ -642,12 +688,12 @@ class Element(Statement):
                 self._nodes = args[:number_of_pins]
                 args = args[number_of_pins:]
         else:  # Q or X
-            if prefix_data.prefix == 'Q':
+            if prefix_data.prefix == "Q":
                 self._nodes = args[:3]
                 args = args[3:]
                 # Fixme: optional node
             else:  # X
-                if args[-1].lower() == 'params:':
+                if args[-1].lower() == "params:":
                     args.pop()
                 self._parameters.append(args.pop())
                 self._nodes = args
@@ -655,7 +701,9 @@ class Element(Statement):
 
         # Read positionals
         number_of_positionals = prefix_data.number_of_positionals_min
-        if number_of_positionals and (len(args) > 0) and (prefix_data.prefix != 'X'):  # model is optional
+        if (
+            number_of_positionals and (len(args) > 0) and (prefix_data.prefix != "X")
+        ):  # model is optional
             self._parameters = args[:number_of_positionals]
             args = args[number_of_positionals:]
         if prefix_data.multi_devices and (len(args) > 0):
@@ -663,19 +711,24 @@ class Element(Statement):
             args = []
             self._parameters.extend(remaining)
 
-        if prefix_data.prefix in ('V', 'I') and (len(args) > 0):
+        if prefix_data.prefix in ("V", "I") and (len(args) > 0):
             # merge remaining
             self._parameters[-1] += " " + " ".join(args)
             self._dict_parameters = kwargs
 
         # Read optionals
-        if (prefix_data.has_optionals or (prefix_data.prefix == 'X')) and (len(kwargs) > 0):
+        if (prefix_data.has_optionals or (prefix_data.prefix == "X")) and (
+            len(kwargs) > 0
+        ):
             for key in kwargs:
                 self._dict_parameters[key] = kwargs[key]
 
         if prefix_data.multi_devices:
             for element_class in prefix_data:
-                if len(self._parameters) == element_class.number_of_positional_parameters:
+                if (
+                    len(self._parameters)
+                    == element_class.number_of_positional_parameters
+                ):
                     break
         else:
             element_class = prefix_data.single
@@ -687,7 +740,9 @@ class Element(Statement):
             if parameter.key_parameter:
                 idx = parameter.position
                 if idx < len(self._parameters):
-                    self._dict_parameters[parameter.attribute_name] = self._parameters[idx]
+                    self._dict_parameters[parameter.attribute_name] = self._parameters[
+                        idx
+                    ]
                     to_delete.append(idx - len(to_delete))
         for idx in to_delete:
             self._parameters.pop(idx)
@@ -704,7 +759,9 @@ class Element(Statement):
     ##############################################
 
     def __repr__(self):
-        return 'Element {0._prefix} {0._name} {0._nodes} {0._parameters} {0._dict_parameters}'.format(self)
+        return "Element {0._prefix} {0._name} {0._nodes} {0._parameters} {0._dict_parameters}".format(
+            self
+        )
 
     ##############################################
 
@@ -722,24 +779,31 @@ class Element(Statement):
 
         nodes = self.translate_ground_node(ground)
         args = [self._name]
-        if self._prefix != 'X':
+        if self._prefix != "X":
             args += nodes + self._parameters
         else:  # != Spice
             args += self._parameters + nodes
         args = self.values_to_python(args)
         kwargs = self.kwargs_to_python(self._dict_parameters)
-        return '{}.{}({})'.format(netlist_name, self._prefix, self.join_args(args + kwargs)) + os.linesep
+        return (
+            "{}.{}({})".format(
+                netlist_name, self._prefix, self.join_args(args + kwargs)
+            )
+            + os.linesep
+        )
 
     ##############################################
 
     def _check_params(self, elements=1):
         params = []
         for param in self._parameters:
-            values = param.replace(',', ' ')
-            if values[0] == '(' and values[-1] == ')':
-                values = values[1: -1].split()
+            values = param.replace(",", " ")
+            if values[0] == "(" and values[-1] == ")":
+                values = values[1:-1].split()
                 if len(values) > elements:
-                    raise IndexError('Incorrect number of elements for (%r): %s' % (self, param))
+                    raise IndexError(
+                        "Incorrect number of elements for (%r): %s" % (self, param)
+                    )
                 params.extend(values)
             else:
                 params.extend(values.split())
@@ -748,137 +812,141 @@ class Element(Statement):
     ##############################################
 
     def _voltage_controlled_nodes(self, poly_arg):
-        result = ['v(%s,%s)' % nodes
-                  for nodes in zip(self._parameters[:(2 * poly_arg):2],
-                                   self._parameters[1:(2 * poly_arg):2])]
-        result += self._parameters[2 * poly_arg:]
-        return ' '.join(result)
+        result = [
+            "v(%s,%s)" % nodes
+            for nodes in zip(
+                self._parameters[: (2 * poly_arg) : 2],
+                self._parameters[1 : (2 * poly_arg) : 2],
+            )
+        ]
+        result += self._parameters[2 * poly_arg :]
+        return " ".join(result)
 
     ##############################################
 
     def _current_controlled_nodes(self, poly_arg):
-        result = ['i(%s)' % node
-                  for node in self._parameters[:poly_arg]]
+        result = ["i(%s)" % node for node in self._parameters[:poly_arg]]
         result += self._parameters[poly_arg:]
-        return ' '.join(result)
+        return " ".join(result)
 
     ##############################################
 
     def _manage_controlled_sources(self, nodes):
         try:
-            idx = self._nodes.index('POLY')
+            idx = self._nodes.index("POLY")
             if idx == 2:
                 poly_arg = self._nodes[3]
-                if poly_arg[0] == '(' and poly_arg[-1] == ')':
+                if poly_arg[0] == "(" and poly_arg[-1] == ")":
                     poly_arg = poly_arg[1:-1]
                 try:
                     poly_arg = int(poly_arg)
                 except TypeError as te:
-                    raise TypeError('Not valid poly argument: %s' % poly_arg, te)
+                    raise TypeError("Not valid poly argument: %s" % poly_arg, te)
                 self._nodes = self._nodes[:2]
                 nodes = nodes[:2]
-                if self._prefix in 'EG':
+                if self._prefix in "EG":
                     self._check_params(2)
                     values = self._voltage_controlled_nodes(poly_arg)
-                    if self._prefix == 'E':
-                        key = 'v'
+                    if self._prefix == "E":
+                        key = "v"
                     else:
-                        key = 'i'
+                        key = "i"
                 else:
                     self._check_params(1)
                     values = self._current_controlled_nodes(poly_arg)
-                    if self._prefix == 'F':
-                        key = 'v'
+                    if self._prefix == "F":
+                        key = "v"
                     else:
-                        key = 'i'
-                poly_str = '{ POLY (%d) %s }' % (poly_arg, values)
+                        key = "i"
+                poly_str = "{ POLY (%d) %s }" % (poly_arg, values)
 
                 self._dict_parameters[key] = poly_str
                 self._parameters.clear()
                 self._name = self._prefix + self._name
-                self._prefix = 'B'
+                self._prefix = "B"
                 prefix_data = _prefix_cache[self._prefix]
                 self.factory = prefix_data.single
                 return nodes
-            raise IndexError('Incorrect position of POLY: %r' % self)
+            raise IndexError("Incorrect position of POLY: %r" % self)
         except ValueError:
             pass
         _correction = []
         correction = []
         for _node, node in zip(self._nodes, nodes):
-            _values = _node.replace(',', ' ')
+            _values = _node.replace(",", " ")
             try:
-                values = node.replace(',', ' ')
+                values = node.replace(",", " ")
             except AttributeError:
                 values = str(node)
-            if _values[0] == '(' and _values[-1] == ')':
-                _values = _values[1: -1]
-            if values[0] == '(' and values[-1] == ')':
-                values = values[1: -1]
+            if _values[0] == "(" and _values[-1] == ")":
+                _values = _values[1:-1]
+            if values[0] == "(" and values[-1] == ")":
+                values = values[1:-1]
             _correction.extend(_values.split())
             correction.extend(values.split())
-        self._parameters = correction[len(self._nodes):] + self._parameters
-        self._nodes = _correction[:len(self._nodes)]
+        self._parameters = correction[len(self._nodes) :] + self._parameters
+        self._nodes = _correction[: len(self._nodes)]
         parameters = self._parameters
-        correction = correction[:len(self._nodes)]
-        if self._prefix in 'EG':
+        correction = correction[: len(self._nodes)]
+        if self._prefix in "EG":
             if len(correction) + len(parameters) == 5:
                 parameters = correction[2:] + parameters
                 self._nodes = _correction[:2]
-                value = '{v(%s, %s) * %s}' % tuple(parameters)
-                if self._prefix == 'E':
-                    key = 'v'
+                value = "{v(%s, %s) * %s}" % tuple(parameters)
+                if self._prefix == "E":
+                    key = "v"
                 else:
-                    key = 'i'
+                    key = "i"
                 self._dict_parameters[key] = value
                 self._parameters.clear()
                 self._name = self._prefix + self._name
-                self._prefix = 'B'
+                self._prefix = "B"
                 prefix_data = _prefix_cache[self._prefix]
                 self.factory = prefix_data.single
         else:
             if len(correction) + len(parameters) == 4:
                 parameters = correction[2:] + parameters
                 self._nodes = _correction[:2]
-                value = '{i(%s) * %s}' % tuple(parameters)
-                if self._prefix == 'F':
-                    key = 'v'
+                value = "{i(%s) * %s}" % tuple(parameters)
+                if self._prefix == "F":
+                    key = "v"
                 else:
-                    key = 'i'
+                    key = "i"
                 self._dict_parameters[key] = value
                 self._parameters.clear()
                 self._name = self._prefix + self._name
-                self._prefix = 'B'
+                self._prefix = "B"
                 prefix_data = _prefix_cache[self._prefix]
                 self.factory = prefix_data.single
-        return correction[:len(self._nodes)]
+        return correction[: len(self._nodes)]
 
     ##############################################
 
     def build(self, circuit, ground=0):
 
         nodes = self.translate_ground_node(ground)
-        if self._prefix != 'X':
-            if self._prefix in ('EFGH'):
+        if self._prefix != "X":
+            if self._prefix in ("EFGH"):
                 nodes = self._manage_controlled_sources(nodes)
             args = nodes + self._parameters
         else:  # != Spice
             args = self._parameters + nodes
         factory = getattr(circuit, self.factory.__alias__)
         kwargs = self._dict_parameters
-        message = ' '.join([str(x) for x in (self._prefix, self._name, args,
-                                             self._dict_parameters)])
+        message = " ".join(
+            [str(x) for x in (self._prefix, self._name, args, self._dict_parameters)]
+        )
         self._logger.debug(message)
         return factory(self._name, *args, **kwargs)
 
 
 ####################################################################################################
 
-class Line:
 
+class Line:
     """This class implements a line in the netlist."""
 
-    _logger = _module_logger.getChild('Line')
+    _logger = _module_logger.getChild("Line")
 
     ##############################################
 
@@ -895,7 +963,7 @@ class Line:
     ##############################################
 
     def __repr__(self):
-        return '{0._line_range}: {0._text} // {0._comment}'.format(self)
+        return "{0._line_range}: {0._text} // {0._comment}".format(self)
 
     ##############################################
 
@@ -918,9 +986,9 @@ class Line:
 
         line = str(line)
 
-        if line.startswith('*'):
+        if line.startswith("*"):
             is_comment = True
-            text = ''
+            text = ""
             comment = line[1:].strip()
         else:
             is_comment = False
@@ -938,7 +1006,7 @@ class Line:
                 comment = line[location:].strip()
             else:
                 text = line
-                comment = ''
+                comment = ""
 
         return text, comment, is_comment
 
@@ -949,11 +1017,11 @@ class Line:
         text, comment, is_comment = self._split_comment(line)
 
         if text:
-            if not self._text.endswith(' ') or text.startswith(' '):
-                self._text += ' '
+            if not self._text.endswith(" ") or text.startswith(" "):
+                self._text += " "
             self._text += text
         if comment:
-            self._comment += ' // ' + comment
+            self._comment += " // " + comment
 
         _slice = self._line_range
         self._line_range = slice(_slice.start, _slice.stop + 1)
@@ -961,7 +1029,6 @@ class Line:
     ##############################################
 
     def lower_case_statement(self, statement):
-
         """Lower case the statement"""
 
         # statement without . prefix
@@ -971,17 +1038,16 @@ class Line:
             _slice = slice(1, len(statement) + 1)
             _statement = self._text[_slice]
             if _statement.lower() == lower_statement:
-                self._text = '.' + lower_statement + self._text[_slice.stop:]
+                self._text = "." + lower_statement + self._text[_slice.stop :]
 
     ##############################################
 
     def right_of(self, text):
-        return self._text[len(text):].strip()
+        return self._text[len(text) :].strip()
 
     ##############################################
 
     def read_words(self, start_location, number_of_words):
-
         """Read a fixed number of words separated by space."""
 
         words = []
@@ -989,13 +1055,15 @@ class Line:
 
         line_str = self._text
         number_of_words_read = 0
-        while number_of_words_read < number_of_words:  # and start_location < len(line_str)
-            if line_str[start_location] == '{':
-                stop_location = line_str.find('}', start_location)
+        while (
+            number_of_words_read < number_of_words
+        ):  # and start_location < len(line_str)
+            if line_str[start_location] == "{":
+                stop_location = line_str.find("}", start_location)
                 if stop_location > start_location:
                     stop_location += 1
             else:
-                stop_location = line_str.find(' ', start_location)
+                stop_location = line_str.find(" ", start_location)
             if stop_location == -1:
                 stop_location = None  # read until end
             word = line_str[start_location:stop_location].strip()
@@ -1004,10 +1072,14 @@ class Line:
                 words.append(word)
             if stop_location is None:  # we should stop
                 if number_of_words_read != number_of_words:
-                    template = 'Bad element line, looking for word {}/{}:' + os.linesep
-                    message = (template.format(number_of_words_read, number_of_words) +
-                               line_str + os.linesep +
-                               ' ' * start_location + '^')
+                    template = "Bad element line, looking for word {}/{}:" + os.linesep
+                    message = (
+                        template.format(number_of_words_read, number_of_words)
+                        + line_str
+                        + os.linesep
+                        + " " * start_location
+                        + "^"
+                    )
                     self._logger.warning(message)
                     raise ParseError(message)
             else:
@@ -1029,24 +1101,24 @@ class Line:
             location = line_str.find(until, start_location)
             if location != -1:
                 stop_location = location
-                location = line_str.rfind(' ', start_location, stop_location)
+                location = line_str.rfind(" ", start_location, stop_location)
                 if location != -1:
                     stop_location = location
                 else:
-                    raise NameError('Bad element line, missing key? ' + line_str)
+                    raise NameError("Bad element line, missing key? " + line_str)
 
         line_str = line_str[start_location:stop_location]
-        words = [x for x in line_str.split(' ') if x]
+        words = [x for x in line_str.split(" ") if x]
         result = []
         expression = 0
         begin_idx = 0
         for idx, word in enumerate(words):
             if expression == 0:
                 begin_idx = idx
-            expression += word.count('{') - word.count('}')
+            expression += word.count("{") - word.count("}")
             if expression == 0:
                 if begin_idx < idx:
-                    result.append(' '.join(words[begin_idx:idx + 1]))
+                    result.append(" ".join(words[begin_idx : idx + 1]))
                 else:
                     result.append(word)
         return result, stop_location
@@ -1060,10 +1132,10 @@ class Line:
 
         parts = []
         for part in text.split():
-            if '=' in part and part != '=':
-                left, right = [x for x in part.split('=')]
+            if "=" in part and part != "=":
+                left, right = [x for x in part.split("=")]
                 parts.append(left)
-                parts.append('=')
+                parts.append("=")
                 if right:
                     parts.append(right)
             else:
@@ -1072,7 +1144,7 @@ class Line:
         i = 0
         i_stop = len(parts)
         while i < i_stop:
-            if i + 1 < i_stop and parts[i + 1] == '=':
+            if i + 1 < i_stop and parts[i + 1] == "=":
                 key, value = parts[i], parts[i + 2]
                 dict_parameters[key] = value
                 i += 3
@@ -1086,12 +1158,12 @@ class Line:
     @staticmethod
     def _partition(text):
         parts = []
-        values = text.replace(',', ' ')
+        values = text.replace(",", " ")
         for part in values.split():
-            if '=' in part and part != '=':
-                left, right = [x for x in part.split('=')]
+            if "=" in part and part != "=":
+                left, right = [x for x in part.split("=")]
                 parts.append(left)
-                parts.append('=')
+                parts.append("=")
                 if right:
                     parts.append(right)
             else:
@@ -1102,11 +1174,11 @@ class Line:
 
     @staticmethod
     def _partition_parentheses(text):
-        p = regex.compile(r'\(([^\(\)]|(?R))*?\)')
+        p = regex.compile(r"\(([^\(\)]|(?R))*?\)")
         parts = []
         previous_start = 0
         for m in regex.finditer(p, text):
-            parts.extend(Line._partition(text[previous_start:m.start()]))
+            parts.extend(Line._partition(text[previous_start : m.start()]))
             parts.append(m.group())
             previous_start = m.end()
         parts.extend(Line._partition(text[previous_start:]))
@@ -1116,11 +1188,11 @@ class Line:
 
     @staticmethod
     def _partition_braces(text):
-        p = regex.compile(r'\{([^\{\}]|(?R))*?\}')
+        p = regex.compile(r"\{([^\{\}]|(?R))*?\}")
         parts = []
         previous_start = 0
         for m in regex.finditer(p, text):
-            parts.extend(Line._partition_parentheses(text[previous_start:m.start()]))
+            parts.extend(Line._partition_parentheses(text[previous_start : m.start()]))
             parts.append(m.group())
             previous_start = m.end()
         parts.extend(Line._partition_parentheses(text[previous_start:]))
@@ -1136,7 +1208,7 @@ class Line:
         i = 0
         i_stop = len(parts)
         while i < i_stop:
-            if i + 1 < i_stop and parts[i + 1] == '=':
+            if i + 1 < i_stop and parts[i + 1] == "=":
                 key, value = parts[i], parts[i + 2]
                 dict_parameters[key] = value
                 i += 3
@@ -1149,7 +1221,6 @@ class Line:
     ##############################################
 
     def split_keyword(self, keyword):
-
         """Split the line according to the following pattern::
 
             keyword parameter1 parameter2 ( key1=value1 key2=value2 )
@@ -1161,8 +1232,8 @@ class Line:
 
         text = self.right_of(keyword)
 
-        p = regex.compile(r'\(([^\(\)]|(?R))*?\)')
-        b = regex.compile(r'\{([^\{\}]|(?R))*?\}')
+        p = regex.compile(r"\(([^\(\)]|(?R))*?\)")
+        b = regex.compile(r"\{([^\{\}]|(?R))*?\}")
         parts = []
 
         mp = regex.search(p, text)
@@ -1170,7 +1241,7 @@ class Line:
         if mb is not None:
             if mp is not None:
                 if (mb.start() > mp.start()) and (mb.end() < mp.end()):
-                    parts.extend(Line._partition(text[:mp.start()]))
+                    parts.extend(Line._partition(text[: mp.start()]))
                     parts.extend(Line._partition_braces(mp.group()[1:-1]))
                 elif (mb.start() < mp.start()) and (mb.end() > mp.end()):
                     parts.extend(Line._partition_braces(text))
@@ -1180,7 +1251,7 @@ class Line:
                 parts.extend(Line._partition_braces(text))
         else:
             if mp is not None:
-                parts.extend(Line._partition(text[:mp.start()]))
+                parts.extend(Line._partition(text[: mp.start()]))
                 parts.extend(Line._partition(mp.group()[1:-1]))
             else:
                 parts.extend(Line._partition(text))
@@ -1189,7 +1260,6 @@ class Line:
     ##############################################
 
     def split_element(self, prefix):
-
         """Split the line according to the following pattern::
 
             keyword parameter1 parameter2 ... key1=value1 key2=value2 ...
@@ -1209,10 +1279,11 @@ class Line:
 
         return Line._check_parameters(parts)
 
+
 ####################################################################################################
 
-class SpiceParser:
 
+class SpiceParser:
     """This class parse a Spice netlist file and build a syntax tree.
 
     Public Attributes:
@@ -1225,16 +1296,16 @@ class SpiceParser:
 
     """
 
-    _logger = _module_logger.getChild('SpiceParser')
+    _logger = _module_logger.getChild("SpiceParser")
 
     ##############################################
 
-    def __init__(self, path=None, source=None, end_of_line_comment=('$', '//', ';')):
+    def __init__(self, path=None, source=None, end_of_line_comment=("$", "//", ";")):
 
         # Fixme: empty source
 
         if path is not None:
-            with open(str(path), 'r') as fh:
+            with open(str(path), "r") as fh:
                 raw_lines = fh.readlines()  # Fixme: cf. jmgc
         elif source is not None:
             raw_lines = source.split(os.linesep)
@@ -1250,7 +1321,6 @@ class SpiceParser:
     ##############################################
 
     def _merge_lines(self, raw_lines):
-
         """Merge broken lines and return a new list of lines.
 
         A line starting with "+" continues the preceding line.
@@ -1260,16 +1330,16 @@ class SpiceParser:
         lines = []
         current_line = None
         for line_index, line_string in enumerate(raw_lines):
-            if line_string.startswith('+'):
-                current_line.append(line_string[1:].strip('\r\n'))
+            if line_string.startswith("+"):
+                current_line.append(line_string[1:].strip("\r\n"))
             else:
-                line_string = line_string.strip(' \t\r\n')
+                line_string = line_string.strip(" \t\r\n")
                 if line_string:
                     _slice = slice(line_index, line_index + 1)
                     line = Line(line_string, _slice, self._end_of_line_comment)
                     lines.append(line)
                     # handle case with comment before line continuation
-                    if not line_string.startswith('*'):
+                    if not line_string.startswith("*"):
                         current_line = line
 
         return lines
@@ -1284,7 +1354,9 @@ class SpiceParser:
             SpiceParser._check_models(subcircuit, p_available_models)
         for model in circuit._required_models:
             if model not in p_available_models:
-                raise ValueError("model (%s) not available in (%s)" % (model, circuit.name))
+                raise ValueError(
+                    "model (%s) not available in (%s)" % (model, circuit.name)
+                )
 
     ##############################################
 
@@ -1295,11 +1367,15 @@ class SpiceParser:
         p_available_subcircuits.update(names)
         dependencies = dict()
         for subcircuit in circuit._subcircuits:
-            required = SpiceParser._sort_subcircuits(subcircuit, p_available_subcircuits)
+            required = SpiceParser._sort_subcircuits(
+                subcircuit, p_available_subcircuits
+            )
             dependencies[subcircuit] = required
         for subcircuit in circuit._required_subcircuits:
             if subcircuit not in p_available_subcircuits:
-                raise ValueError("subcircuit (%s) not available in (%s)" % (subcircuit, circuit.name))
+                raise ValueError(
+                    "subcircuit (%s) not available in (%s)" % (subcircuit, circuit.name)
+                )
         items = sorted(dependencies.items(), key=lambda item: len(item[1]))
         result = list()
         result_names = list()
@@ -1319,14 +1395,16 @@ class SpiceParser:
             for item in remove:
                 items.remove(item)
         if len(items) > 0:
-            raise ValueError("Crossed dependencies (%s)" % [(key.name, value) for key, value in items])
+            raise ValueError(
+                "Crossed dependencies (%s)"
+                % [(key.name, value) for key, value in items]
+            )
         circuit._subcircuits = result
         return circuit._required_subcircuits - set(names)
 
     ##############################################
 
     def _parse(self, lines):
-
         """Parse the lines and return a list of statements."""
 
         # The first line in the input file must be the title, which is the only comment line that does
@@ -1335,7 +1413,7 @@ class SpiceParser:
         # The last line must be .end
 
         if len(lines) <= 1:
-            raise NameError('Netlist is empty')
+            raise NameError("Netlist is empty")
         # if lines[-1] != '.end':
         #     raise NameError('".end" is expected at the end of the netlist')
 
@@ -1348,28 +1426,28 @@ class SpiceParser:
             lower_case_text = text.lower()  # !
             if line.is_comment:
                 scope.append(Comment(line))
-            elif lower_case_text.startswith('.'):
+            elif lower_case_text.startswith("."):
                 lower_case_text = lower_case_text[1:]
-                if lower_case_text.startswith('subckt'):
+                if lower_case_text.startswith("subckt"):
                     stack.append(scope)
                     scope = SubCircuitStatement(line)
-                elif lower_case_text.startswith('ends'):
+                elif lower_case_text.startswith("ends"):
                     parent = stack.pop()
                     parent.append_subcircuit(scope)
                     scope = parent
-                elif lower_case_text.startswith('title'):
+                elif lower_case_text.startswith("title"):
                     # override fist line
                     self._title = Title(line)
                     scope.append(self._title)
-                elif lower_case_text.startswith('end'):
+                elif lower_case_text.startswith("end"):
                     pass
-                elif lower_case_text.startswith('model'):
+                elif lower_case_text.startswith("model"):
                     model = Model(line)
                     scope.append_model(model)
-                elif lower_case_text.startswith('include'):
+                elif lower_case_text.startswith("include"):
                     include = Include(line)
                     scope.append(include)
-                elif lower_case_text.startswith('param'):
+                elif lower_case_text.startswith("param"):
                     param = Parameter(line)
                     scope.append_param(param)
                 else:
@@ -1378,16 +1456,19 @@ class SpiceParser:
                     # .lib filename libname
                     # .func .csparam .temp .if
                     # { expr } are allowed in .model lines and in device lines.
-                    self._logger.warn('Parser ignored: {}'.format(line))
+                    self._logger.warning(f"Parser ignored: {line}")
             else:
                 try:
                     element = Element(line)
                     scope.append(element)
-                    if hasattr(element, '_prefix') and (element._prefix == "X"):
+                    if hasattr(element, "_prefix") and (element._prefix == "X"):
                         name = element._parameters[0].lower()
                         scope._required_subcircuits.add(name)
-                    elif hasattr(element, '_dict_parameters') and 'model' in element._dict_parameters:
-                        name = element._dict_parameters['model'].lower()
+                    elif (
+                        hasattr(element, "_dict_parameters")
+                        and "model" in element._dict_parameters
+                    ):
+                        name = element._dict_parameters["model"].lower()
                         scope._required_models.add(name)
                 except ParseError:
                     pass
@@ -1457,7 +1538,7 @@ class SpiceParser:
     @staticmethod
     def netlist_to_python(netlist_name, statements, ground=0):
 
-        source_code = ''
+        source_code = ""
         for statement in statements:
             if isinstance(statement, Element):
                 source_code += statement.to_python(netlist_name, ground)
@@ -1477,10 +1558,10 @@ class SpiceParser:
 
         ground = str(ground)
 
-        source_code = ''
+        source_code = ""
 
         if self.circuit:
             source_code += "circuit = Circuit('{}')".format(self._title) + os.linesep
-        source_code += self.netlist_to_python('circuit', self._statements, ground)
+        source_code += self.netlist_to_python("circuit", self._statements, ground)
 
         return source_code

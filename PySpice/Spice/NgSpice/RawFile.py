@@ -22,7 +22,7 @@
 
 import os
 
-from ..RawFile import VariableAbc, RawFileAbc
+from ..RawFile import RawFileAbc, VariableAbc
 
 ####################################################################################################
 
@@ -99,18 +99,19 @@ _module_logger = logging.getLogger(__name__)
 
 # Fixme: self._
 
+
 class Variable(VariableAbc):
 
     ##############################################
 
     def is_voltage_node(self):
-        return self.name.startswith('v(')
+        return self.name.startswith("v(")
 
     ##############################################
 
     def is_branch_current(self):
         # source branch current
-        return self.name.startswith('i(')
+        return self.name.startswith("i(")
 
     ##############################################
 
@@ -122,11 +123,12 @@ class Variable(VariableAbc):
         else:
             return self.name
 
+
 ####################################################################################################
 
-class RawFile(RawFileAbc):
 
-    """ This class parse the stdout of ngspice and the raw data output.
+class RawFile(RawFileAbc):
+    """This class parse the stdout of ngspice and the raw data output.
 
     Public Attributes:
 
@@ -157,7 +159,7 @@ class RawFile(RawFileAbc):
 
     """
 
-    _logger = _module_logger.getChild('RawFile')
+    _logger = _module_logger.getChild("RawFile")
 
     _variable_cls = Variable
 
@@ -176,33 +178,40 @@ class RawFile(RawFileAbc):
     ##############################################
 
     def _read_header(self, stdout):
+        """Parse the header"""
 
-        """ Parse the header """
-
-        binary_line = b'Binary:' + os.linesep.encode('ascii')
+        binary_line = b"Binary:" + os.linesep.encode("ascii")
         binary_location = stdout.find(binary_line)
         if binary_location < 0:
-            raise NameError('Cannot locate binary data')
+            raise NameError("Cannot locate binary data")
         raw_data_start = binary_location + len(binary_line)
         # self._logger.debug(os.linesep + stdout[:raw_data_start].decode('utf-8'))
         header_lines = stdout[:binary_location].splitlines()
         raw_data = stdout[raw_data_start:]
         header_line_iterator = iter(header_lines)
 
-        self.circuit_name = self._read_header_field_line(header_line_iterator, 'Circuit')
-        self.temperature, self.nominal_temperature = self._read_temperature_line(header_line_iterator)
-        self.warnings = [self._read_header_field_line(header_line_iterator, 'Warning')
-                         for i in range(stdout.count(b'Warning'))]
+        self.circuit_name = self._read_header_field_line(
+            header_line_iterator, "Circuit"
+        )
+        self.temperature, self.nominal_temperature = self._read_temperature_line(
+            header_line_iterator
+        )
+        self.warnings = [
+            self._read_header_field_line(header_line_iterator, "Warning")
+            for i in range(stdout.count(b"Warning"))
+        ]
         for warning in self.warnings:
-            self._logger.warn(warning)
-        self.title = self._read_header_field_line(header_line_iterator, 'Title')
-        self.date = self._read_header_field_line(header_line_iterator, 'Date')
-        self.plot_name = self._read_header_field_line(header_line_iterator, 'Plotname')
-        self.flags = self._read_header_field_line(header_line_iterator, 'Flags')
-        self.number_of_variables = int(self._read_header_field_line(header_line_iterator, 'No. Variables'))
-        self._read_header_field_line(header_line_iterator, 'No. Points')
-        self._read_header_field_line(header_line_iterator, 'Variables', has_value=False)
-        self._read_header_field_line(header_line_iterator, 'No. of Data Columns ')
+            self._logger.warning(warning)
+        self.title = self._read_header_field_line(header_line_iterator, "Title")
+        self.date = self._read_header_field_line(header_line_iterator, "Date")
+        self.plot_name = self._read_header_field_line(header_line_iterator, "Plotname")
+        self.flags = self._read_header_field_line(header_line_iterator, "Flags")
+        self.number_of_variables = int(
+            self._read_header_field_line(header_line_iterator, "No. Variables")
+        )
+        self._read_header_field_line(header_line_iterator, "No. Points")
+        self._read_header_field_line(header_line_iterator, "Variables", has_value=False)
+        self._read_header_field_line(header_line_iterator, "No. of Data Columns ")
         self._read_header_variables(header_line_iterator)
 
         return raw_data
@@ -210,12 +219,13 @@ class RawFile(RawFileAbc):
     ##############################################
 
     def fix_case(self):
-
-        """ Ngspice return lower case names. This method fixes the case of the variable names. """
+        """Ngspice return lower case names. This method fixes the case of the variable names."""
 
         circuit = self.circuit
-        element_translation = {element.lower():element for element in circuit.element_names}
-        node_translation = {node.lower():node for node in circuit.node_names}
+        element_translation = {
+            element.lower(): element for element in circuit.element_names
+        }
+        node_translation = {node.lower(): node for node in circuit.node_names}
         for variable in self.variables.values():
             variable.fix_case(element_translation, node_translation)
 
@@ -223,10 +233,10 @@ class RawFile(RawFileAbc):
 
     def _to_dc_analysis(self):
 
-        if 'v(v-sweep)' in self.variables:
-            sweep_variable = self.variables['v(v-sweep)']
-        elif 'v(i-sweep)' in self.variables:
-            sweep_variable = self.variables['v(i-sweep)']
+        if "v(v-sweep)" in self.variables:
+            sweep_variable = self.variables["v(v-sweep)"]
+        elif "v(i-sweep)" in self.variables:
+            sweep_variable = self.variables["v(i-sweep)"]
         else:
             #
             raise NotImplementedError

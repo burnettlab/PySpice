@@ -32,12 +32,12 @@ It would be difficult to implement a full parser for Ngspice since the syntax is
 
 import logging
 import os
+import re
 
 ####################################################################################################
-
 from .BasicElement import SubCircuitElement
 from .ElementParameter import FlagParameter
-from .Netlist import ElementParameterMetaClass, Circuit, SubCircuit
+from .Netlist import Circuit, ElementParameterMetaClass, SubCircuit
 
 ####################################################################################################
 
@@ -45,13 +45,15 @@ _module_logger = logging.getLogger(__name__)
 
 ####################################################################################################
 
+
 class ParseError(NameError):
     pass
 
+
 ####################################################################################################
 
-class PrefixData:
 
+class PrefixData:
     """This class represents a device prefix."""
 
     ##############################################
@@ -66,8 +68,12 @@ class PrefixData:
         has_optionals = False
         for element_class in classes:
             number_of_positionals = element_class.number_of_positional_parameters
-            number_of_positionals_min = min(number_of_positionals_min, number_of_positionals)
-            number_of_positionals_max = max(number_of_positionals_max, number_of_positionals)
+            number_of_positionals_min = min(
+                number_of_positionals_min, number_of_positionals
+            )
+            number_of_positionals_max = max(
+                number_of_positionals_max, number_of_positionals
+            )
             has_optionals = max(has_optionals, bool(element_class.optional_parameters))
 
         self.number_of_positionals_min = number_of_positionals_min
@@ -75,7 +81,10 @@ class PrefixData:
         self.has_optionals = has_optionals
 
         self.multi_devices = len(classes) > 1
-        self.has_variable_number_of_pins = prefix in ('Q', 'X') # NPinElement, Q has 3 to 4 pins
+        self.has_variable_number_of_pins = prefix in (
+            "Q",
+            "X",
+        )  # NPinElement, Q has 3 to 4 pins
         if self.has_variable_number_of_pins:
             self.number_of_pins = None
         else:
@@ -106,6 +115,7 @@ class PrefixData:
             return self.classes[0]
         else:
             raise NameError()
+
 
 ####################################################################################################
 
@@ -150,9 +160,9 @@ for prefix, classes in ElementParameterMetaClass._classes.items():
 
 ####################################################################################################
 
-class Statement:
 
-    """ This class implements a statement, in fact a line in a Spice netlist. """
+class Statement:
+    """This class implements a statement, in fact a line in a Spice netlist."""
 
     ##############################################
 
@@ -166,7 +176,7 @@ class Statement:
     ##############################################
 
     def __repr__(self):
-        return '{} {}'.format(self.__class__.__name__, repr(self._line))
+        return "{} {}".format(self.__class__.__name__, repr(self._line))
 
     ##############################################
 
@@ -178,7 +188,7 @@ class Statement:
             else:
                 return "'{}'".format(x)
         else:
-            return ''
+            return ""
 
     ##############################################
 
@@ -189,31 +199,36 @@ class Statement:
     ##############################################
 
     def kwargs_to_python(self, kwargs):
-        return ['{}={}'.format(key, self.value_to_python(value))
-                for key, value in kwargs.items()]
+        return [
+            "{}={}".format(key, self.value_to_python(value))
+            for key, value in kwargs.items()
+        ]
 
     ##############################################
 
     def join_args(self, args):
-        return ', '.join(args)
+        return ", ".join(args)
+
 
 ####################################################################################################
+
 
 class Comment(Statement):
     pass
 
+
 ####################################################################################################
 
-class Title(Statement):
 
-    """ This class implements a title definition. """
+class Title(Statement):
+    """This class implements a title definition."""
 
     ##############################################
 
     def __init__(self, line):
 
-        super().__init__(line, statement='title')
-        self._title = self._line.right_of('.title')
+        super().__init__(line, statement="title")
+        self._title = self._line.right_of(".title")
 
     ##############################################
 
@@ -223,20 +238,21 @@ class Title(Statement):
     ##############################################
 
     def __repr__(self):
-        return 'Title {}'.format(self._title)
+        return "Title {}".format(self._title)
+
 
 ####################################################################################################
 
-class Lib(Statement):
 
-    """ This class implements a library definition. """
+class Lib(Statement):
+    """This class implements a library definition."""
 
     ##############################################
 
     def __init__(self, line):
 
-        super().__init__(line, statement='lib')
-        self._lib = self._line.right_of('.lib')
+        super().__init__(line, statement="lib")
+        self._lib = self._line.right_of(".lib")
 
     ##############################################
 
@@ -246,26 +262,27 @@ class Lib(Statement):
     ##############################################
 
     def __repr__(self):
-        return 'Lib {}'.format(self._lib)
+        return "Lib {}".format(self._lib)
 
     ##############################################
 
     def to_python(self, netlist_name):
 
-        return '{}.lib({})'.format(netlist_name, self._lib) + os.linesep
+        return "{}.lib({})".format(netlist_name, self._lib) + os.linesep
+
 
 ####################################################################################################
 
-class Include(Statement):
 
-    """ This class implements a include definition. """
+class Include(Statement):
+    """This class implements a include definition."""
 
     ##############################################
 
     def __init__(self, line):
 
-        super().__init__(line, statement='include')
-        self._include = self._line.right_of('.include').strip('"')
+        super().__init__(line, statement="include")
+        self._include = self._line.right_of(".include").strip('"')
 
     ##############################################
 
@@ -275,19 +292,20 @@ class Include(Statement):
     ##############################################
 
     def __repr__(self):
-        return 'Include {}'.format(self._include)
+        return "Include {}".format(self._include)
 
     ##############################################
 
     def to_python(self, netlist_name):
 
-        return '{}.include({})'.format(netlist_name, self._include) + os.linesep
+        return "{}.include({})".format(netlist_name, self._include) + os.linesep
+
 
 ####################################################################################################
 
-class Model(Statement):
 
-    """ This class implements a model definition.
+class Model(Statement):
+    """This class implements a model definition.
 
     Spice syntax::
 
@@ -299,46 +317,51 @@ class Model(Statement):
 
     def __init__(self, line):
 
-        super().__init__(line, statement='model')
+        super().__init__(line, statement="model")
 
-        text = line.right_of('.model').strip()
+        text = line.right_of(".model").strip()
         import re
-        mtch = re.match('\s*([^ \t]+)\s*([^ \t(]+)(.*)', text)
+
+        mtch = re.match("\s*([^ \t]+)\s*([^ \t(]+)(.*)", text)
         self._name = mtch[1]
         self._model_type = mtch[2]
         params = mtch[3]
-        params = params.strip('() ')
+        params = params.strip("() ")
         self._parameters = Line.get_kwarg(params)
 
     ##############################################
 
     @property
     def name(self):
-        """ Name of the model """
+        """Name of the model"""
         return self._name
 
     ##############################################
 
     def __repr__(self):
-        return 'Model {} {} {}'.format(self._name, self._model_type, self._parameters)
+        return "Model {} {} {}".format(self._name, self._model_type, self._parameters)
 
     ##############################################
 
     def to_python(self, netlist_name):
         args = self.values_to_python((self._name, self._model_type))
         kwargs = self.kwargs_to_python(self._parameters)
-        return '{}.model({})'.format(netlist_name, self.join_args(args + kwargs)) + os.linesep
+        return (
+            "{}.model({})".format(netlist_name, self.join_args(args + kwargs))
+            + os.linesep
+        )
 
     ##############################################
 
     def build(self, circuit):
         circuit.model(self._name, self._model_type, **self._parameters)
 
+
 ####################################################################################################
 
-class SubCircuitStatement(Statement):
 
-    """ This class implements a sub-circuit definition.
+class SubCircuitStatement(Statement):
+    """This class implements a sub-circuit definition.
 
     Spice syntax::
 
@@ -350,10 +373,10 @@ class SubCircuitStatement(Statement):
 
     def __init__(self, line):
 
-        super().__init__(line, statement='subckt')
+        super().__init__(line, statement="subckt")
 
         # Fixme
-        parameters, dict_parameters = self._line.split_line('.subckt')
+        parameters, dict_parameters = self._line.split_line(".subckt")
         self._name, self._nodes = parameters[0], parameters[1:]
 
         self._statements = []
@@ -362,41 +385,46 @@ class SubCircuitStatement(Statement):
 
     @property
     def name(self):
-        """ Name of the sub-circuit. """
+        """Name of the sub-circuit."""
         return self._name
 
     @property
     def nodes(self):
-        """ Nodes of the sub-circuit. """
+        """Nodes of the sub-circuit."""
         return self._nodes
 
     ##############################################
 
     def __repr__(self):
-        text = 'SubCircuit {} {}'.format(self._name, self._nodes) + os.linesep
-        text += os.linesep.join(['  ' + repr(statement) for statement in self._statements])
+        text = "SubCircuit {} {}".format(self._name, self._nodes) + os.linesep
+        text += os.linesep.join(
+            ["  " + repr(statement) for statement in self._statements]
+        )
         return text
 
     ##############################################
 
     def __iter__(self):
-        """ Return an iterator on the statements. """
+        """Return an iterator on the statements."""
         return iter(self._statements)
 
     ##############################################
 
     def append(self, statement):
-        """ Append a statement to the statement's list. """
+        """Append a statement to the statement's list."""
         self._statements.append(statement)
 
     ##############################################
 
     def to_python(self, ground=0):
 
-        subcircuit_name = 'subcircuit_' + self._name
+        subcircuit_name = "subcircuit_" + self._name
         args = self.values_to_python([subcircuit_name] + self._nodes)
-        source_code = ''
-        source_code += '{} = SubCircuit({})'.format(subcircuit_name, self.join_args(args)) + os.linesep
+        source_code = ""
+        source_code += (
+            "{} = SubCircuit({})".format(subcircuit_name, self.join_args(args))
+            + os.linesep
+        )
         source_code += SpiceParser.netlist_to_python(subcircuit_name, self, ground)
         return source_code
 
@@ -407,17 +435,18 @@ class SubCircuitStatement(Statement):
         SpiceParser._build_circuit(subcircuit, self._statements, ground)
         return subcircuit
 
+
 ####################################################################################################
 
-class Element(Statement):
 
-    """ This class implements an element definition.
+class Element(Statement):
+    """This class implements an element definition.
 
     "{ expression }" are allowed in device line.
 
     """
 
-    _logger = _module_logger.getChild('Element')
+    _logger = _module_logger.getChild("Element")
 
     ##############################################
 
@@ -434,7 +463,7 @@ class Element(Statement):
 
         # Retrieve device name
         start_location = 1
-        stop_location = line_str.find(' ')
+        stop_location = line_str.find(" ")
         # Fixme: if stop_location == -1:
         self._name = line_str[start_location:stop_location]
 
@@ -446,25 +475,29 @@ class Element(Statement):
         if not prefix_data.has_variable_number_of_pins:
             number_of_pins = prefix_data.number_of_pins
             if number_of_pins:
-                self._nodes, stop_location = self._line.read_words(stop_location, number_of_pins)
-        else: # Q or X
-            if prefix_data.prefix == 'Q':
+                self._nodes, stop_location = self._line.read_words(
+                    stop_location, number_of_pins
+                )
+        else:  # Q or X
+            if prefix_data.prefix == "Q":
                 self._nodes, stop_location = self._line.read_words(stop_location, 3)
                 # Fixme: optional node
-            else: # X
-                args, stop_location = self._line.split_words(stop_location, until='=')
+            else:  # X
+                args, stop_location = self._line.split_words(stop_location, until="=")
                 self._nodes = args[:-1]
-                self._parameters.append(args[-1]) # model name
+                self._parameters.append(args[-1])  # model name
 
         # Read positionals
         number_of_positionals = prefix_data.number_of_positionals_min
-        if number_of_positionals and stop_location is not None: # model is optional
-            self._parameters, stop_location = self._line.read_words(stop_location, number_of_positionals)
+        if number_of_positionals and stop_location is not None:  # model is optional
+            self._parameters, stop_location = self._line.read_words(
+                stop_location, number_of_positionals
+            )
         if prefix_data.multi_devices and stop_location is not None:
-            remaining, stop_location = self._line.split_words(stop_location, until='=')
+            remaining, stop_location = self._line.split_words(stop_location, until="=")
             self._parameters.extend(remaining)
 
-        if prefix_data.prefix in ('V', 'I') and stop_location is not None:
+        if prefix_data.prefix in ("V", "I") and stop_location is not None:
             # merge remaining
             self._parameters[-1] += line_str[stop_location:]
 
@@ -473,11 +506,11 @@ class Element(Statement):
             kwargs, stop_location = self._line.split_words(stop_location)
             for kwarg in kwargs:
                 try:
-                    key, value = kwarg.split('=')
+                    key, value = kwarg.split("=")
                     self._dict_parameters[key.lower()] = value
                 except ValueError:
-                    if kwarg in ('off',) and prefix_data.has_flag:
-                        self._dict_parameters['off'] = True
+                    if kwarg in ("off",) and prefix_data.has_flag:
+                        self._dict_parameters["off"] = True
                     else:
                         # Fixme: warning -> debug due to spam ...
                         self._logger.debug(line_str)
@@ -485,7 +518,10 @@ class Element(Statement):
 
         if prefix_data.multi_devices:
             for element_class in prefix_data:
-                if len(self._parameters) == element_class.number_of_positional_parameters:
+                if (
+                    len(self._parameters)
+                    == element_class.number_of_positional_parameters
+                ):
                     break
         else:
             element_class = prefix_data.single
@@ -507,13 +543,15 @@ class Element(Statement):
 
     @property
     def name(self):
-        """ Name of the element """
+        """Name of the element"""
         return self._name
 
     ##############################################
 
     def __repr__(self):
-        return 'Element {0._prefix} {0._name} {0._nodes} {0._parameters} {0._dict_parameters}'.format(self)
+        return "Element {0._prefix} {0._name} {0._nodes} {0._parameters} {0._dict_parameters}".format(
+            self
+        )
 
     ##############################################
 
@@ -533,13 +571,18 @@ class Element(Statement):
 
         nodes = self.translate_ground_node(ground)
         args = [self._name]
-        if self._prefix != 'X':
+        if self._prefix != "X":
             args += nodes + self._parameters
-        else: # != Spice
+        else:  # != Spice
             args += self._parameters + nodes
         args = self.values_to_python(args)
         kwargs = self.kwargs_to_python(self._dict_parameters)
-        return '{}.{}({})'.format(netlist_name, self._prefix, self.join_args(args + kwargs)) + os.linesep
+        return (
+            "{}.{}({})".format(
+                netlist_name, self._prefix, self.join_args(args + kwargs)
+            )
+            + os.linesep
+        )
 
     ##############################################
 
@@ -547,24 +590,35 @@ class Element(Statement):
 
         factory = getattr(circuit, self.factory.ALIAS)
         nodes = self.translate_ground_node(ground)
-        if self._prefix != 'X':
+        if self._prefix != "X":
             args = nodes + self._parameters
-        else: # != Spice
+        else:  # != Spice
             args = self._parameters + nodes
         kwargs = self._dict_parameters
         if self._logger.isEnabledFor(logging.DEBUG):
-            message = ' '.join([str(x) for x in (self._prefix, self._name, nodes,
-                                                 self._parameters, self._dict_parameters)])
+            message = " ".join(
+                [
+                    str(x)
+                    for x in (
+                        self._prefix,
+                        self._name,
+                        nodes,
+                        self._parameters,
+                        self._dict_parameters,
+                    )
+                ]
+            )
             self._logger.debug(message)
         factory(self._name, *args, **kwargs)
 
+
 ####################################################################################################
 
+
 class Line:
+    """This class implements a line in the netlist."""
 
-    """ This class implements a line in the netlist. """
-
-    _logger = _module_logger.getChild('Element')
+    _logger = _module_logger.getChild("Element")
 
     ##############################################
 
@@ -581,7 +635,7 @@ class Line:
     ##############################################
 
     def __repr__(self):
-        return '{0._line_range}: {0._text} // {0._comment}'.format(self)
+        return "{0._line_range}: {0._text} // {0._comment}".format(self)
 
     ##############################################
 
@@ -604,9 +658,9 @@ class Line:
 
         line = str(line)
 
-        if line.startswith('*'):
+        if line.startswith("*"):
             is_comment = True
-            text = ''
+            text = ""
             comment = line[1:].strip()
         else:
             is_comment = False
@@ -624,7 +678,7 @@ class Line:
                 comment = line[location:].strip()
             else:
                 text = line
-                comment = ''
+                comment = ""
 
         return text, comment, is_comment
 
@@ -635,11 +689,11 @@ class Line:
         text, comment, is_comment = self._split_comment(line)
 
         if text:
-            if not self._text.endswith(' ') or text.startswith(' '):
-                self._text += ' '
+            if not self._text.endswith(" ") or text.startswith(" "):
+                self._text += " "
             self._text += text
         if comment:
-            self._comment += ' // ' + comment
+            self._comment += " // " + comment
 
         _slice = self._line_range
         self._line_range = slice(_slice.start, _slice.stop + 1)
@@ -647,7 +701,6 @@ class Line:
     ##############################################
 
     def lower_case_statement(self, statement):
-
         """Lower case the statement"""
 
         # statement without . prefix
@@ -657,17 +710,16 @@ class Line:
             _slice = slice(1, len(statement) + 1)
             _statement = self._text[_slice]
             if _statement.lower() == lower_statement:
-                self._text = '.' + lower_statement + self._text[_slice.stop:]
+                self._text = "." + lower_statement + self._text[_slice.stop :]
 
     ##############################################
 
     def right_of(self, text):
-        return self._text[len(text):].strip()
+        return self._text[len(text) :].strip()
 
     ##############################################
 
     def read_words(self, start_location, number_of_words):
-
         """Read a fixed number of words separated by space."""
 
         words = []
@@ -675,26 +727,32 @@ class Line:
 
         line_str = self._text
         number_of_words_read = 0
-        while number_of_words_read < number_of_words: # and start_location < len(line_str)
-            stop_location = line_str.find(' ', start_location)
+        while (
+            number_of_words_read < number_of_words
+        ):  # and start_location < len(line_str)
+            stop_location = line_str.find(" ", start_location)
             if stop_location == -1:
-                stop_location = None # read until end
+                stop_location = None  # read until end
             word = line_str[start_location:stop_location].strip()
             if word:
                 number_of_words_read += 1
                 words.append(word)
-            if stop_location is None: # we should stop
+            if stop_location is None:  # we should stop
                 if number_of_words_read != number_of_words:
-                    template = 'Bad element line, looking for word {}/{}:' + os.linesep
-                    message = (template.format(number_of_words_read, number_of_words) +
-                               line_str + os.linesep +
-                               ' '*start_location + '^')
+                    template = "Bad element line, looking for word {}/{}:" + os.linesep
+                    message = (
+                        template.format(number_of_words_read, number_of_words)
+                        + line_str
+                        + os.linesep
+                        + " " * start_location
+                        + "^"
+                    )
                     self._logger.warning(message)
                     raise ParseError(message)
             else:
                 if start_location < stop_location:
                     start_location = stop_location
-                else: # we have read a space
+                else:  # we have read a space
                     start_location += 1
 
         return words, stop_location
@@ -710,14 +768,14 @@ class Line:
             location = line_str.find(until, start_location)
             if location != -1:
                 stop_location = location
-                location = line_str.rfind(' ', start_location, stop_location)
+                location = line_str.rfind(" ", start_location, stop_location)
                 if location != -1:
                     stop_location = location
                 else:
-                    raise NameError('Bad element line, missing key? ' + line_str)
+                    raise NameError("Bad element line, missing key? " + line_str)
 
         line_str = line_str[start_location:stop_location]
-        words = [x for x in line_str.split(' ') if x]
+        words = [x for x in line_str.split(" ") if x]
 
         return words, stop_location
 
@@ -728,33 +786,24 @@ class Line:
 
         dict_parameters = {}
 
-        parts = []
-        for part in text.split():
-            if '=' in part and part != '=':
-                left, right = [x for x in part.split('=')]
-                parts.append(left)
-                parts.append('=')
-                if right:
-                    parts.append(right)
-            else:
-                parts.append(part)
+        p_equal = None
+        for match in re.finditer(r"(\S+)\s*=", text):
+            if p_equal is not None:
+                right = text[p_equal:match.start()].strip()
+                dict_parameters[left] = right
 
-        i = 0
-        i_stop = len(parts)
-        while i < i_stop:
-            if i + 1 < i_stop and parts[i + 1] == '=':
-                key, value = parts[i], parts[i + 2]
-                dict_parameters[key] = value
-                i += 3
-            else:
-                raise ParseError("Bad kwarg: {}".format(text))
+            left = match.group(1)
+            p_equal = match.end()
+
+        if p_equal:
+            right = text[p_equal:].strip()
+            dict_parameters[left] = right
 
         return dict_parameters
 
     ##############################################
 
     def split_line(self, keyword):
-
         """Split the line according to the following pattern::
 
             keyword parameter1 parameter2 ... key1=value1 key2=value2 ...
@@ -772,10 +821,10 @@ class Line:
 
         parts = []
         for part in text.split():
-            if '=' in part and part != '=':
-                left, right = [x for x in part.split('=')]
+            if "=" in part and part != "=":
+                left, right = [x for x in part.split("=")]
                 parts.append(left)
-                parts.append('=')
+                parts.append("=")
                 if right:
                     parts.append(right)
             else:
@@ -784,7 +833,7 @@ class Line:
         i = 0
         i_stop = len(parts)
         while i < i_stop:
-            if i + 1 < i_stop and parts[i + 1] == '=':
+            if i + 1 < i_stop and parts[i + 1] == "=":
                 key, value = parts[i], parts[i + 2]
                 dict_parameters[key] = value
                 i += 3
@@ -794,11 +843,12 @@ class Line:
 
         return parameters, dict_parameters
 
+
 ####################################################################################################
 
-class SpiceParser:
 
-    """ This class parse a Spice netlist file and build a syntax tree.
+class SpiceParser:
+    """This class parse a Spice netlist file and build a syntax tree.
 
     Public Attributes:
 
@@ -812,18 +862,25 @@ class SpiceParser:
 
     """
 
-    _logger = _module_logger.getChild('SpiceParser')
+    _logger = _module_logger.getChild("SpiceParser")
 
     ##############################################
 
-    def __init__(self, path=None, source=None, end_of_line_comment=('$', '//', ';'), recurse=False, section=None):
+    def __init__(
+        self,
+        path=None,
+        source=None,
+        end_of_line_comment=("$", "//", ";"),
+        recurse=False,
+        section=None,
+    ):
 
         # Fixme: empty source
 
         self._path = path  # For use by _parse() when recursing through files.
 
         if path is not None:
-            with open(str(path), 'r') as f:
+            with open(str(path), "r") as f:
                 raw_lines = f.readlines()
         elif source is not None:
             raw_lines = source.split(os.linesep)
@@ -840,7 +897,6 @@ class SpiceParser:
     ##############################################
 
     def _merge_lines(self, raw_lines):
-
         """Merge broken lines and return a new list of lines.
 
         A line starting with "+" continues the preceding line.
@@ -849,17 +905,17 @@ class SpiceParser:
         lines = []
         current_line = None
         for line_index, line_string in enumerate(raw_lines):
-            line_string = line_string.lstrip(' ')
-            if line_string.startswith('+'):
-                current_line.append(line_string[1:].strip('\r\n'))
+            line_string = line_string.lstrip(" ")
+            if line_string.startswith("+"):
+                current_line.append(line_string[1:].strip("\r\n"))
             else:
-                line_string = line_string.strip('\r\n')
+                line_string = line_string.strip("\r\n")
                 if line_string:
-                    _slice = slice(line_index, line_index +1)
+                    _slice = slice(line_index, line_index + 1)
                     line = Line(line_string, _slice, self._end_of_line_comment)
                     lines.append(line)
                     # handle case with comment before line continuation
-                    if not line_string.startswith('*'):
+                    if not line_string.startswith("*"):
                         current_line = line
 
         return lines
@@ -867,8 +923,7 @@ class SpiceParser:
     ##############################################
 
     def _parse(self, lines, recurse=False, section=None):
-
-        """ Parse the lines and return a list of statements. """
+        """Parse the lines and return a list of statements."""
 
         # The first line in the input file must be the title, which is the only comment line that does
         # not need any special character in the first place.
@@ -876,21 +931,21 @@ class SpiceParser:
         # The last line must be .end
 
         if len(lines) <= 1:
-            self._logger.warning('Empty Spice file: {self._path}'.format(**locals()))
+            self._logger.warning(f"Empty Spice file: {self._path}")
             # raise NameError('Netlist is empty')
         # if lines[-1] != '.end':
         #     raise NameError('".end" is expected at the end of the netlist')
 
-        title_statement = '.title '
+        title_statement = ".title "
         self._title = str(lines[0])
         if self._title.startswith(title_statement):
-            self._title = self._title[len(title_statement):]
+            self._title = self._title[len(title_statement) :]
 
         # SUBCKT and MODEL files often start with their commands as the
         # first line so they'll parse incorrectly if that line is removed.
         # For everything else, assume the first line is a TITLE line and
         # remove it.
-        if str(lines[0]).startswith(('.model', '.subckt')):
+        if str(lines[0]).startswith((".model", ".subckt")):
             start_index = 0
         else:
             start_index = 1
@@ -903,38 +958,43 @@ class SpiceParser:
         for line in lines[start_index:]:
             # print('>', repr(line))
             text = str(line)
-            lower_case_text = text.lower() # !
+            lower_case_text = text.lower()  # !
             if skip_lines[-1]:
-                if lower_case_text.startswith('.endl'):
+                if lower_case_text.startswith(".endl"):
                     skip_lines.pop()
             elif line.is_comment:
                 scope.append(Comment(line))
-            elif lower_case_text.startswith('.'):
+            elif lower_case_text.startswith("."):
                 lower_case_text = lower_case_text[1:]
-                if lower_case_text.startswith('subckt'):
+                if lower_case_text.startswith("subckt"):
                     sub_circuit = SubCircuitStatement(line)
                     statements.append(sub_circuit)
                     scope = sub_circuit
-                elif lower_case_text.startswith('ends'):
+                elif lower_case_text.startswith("ends"):
                     sub_circuit = None
                     scope = statements
-                elif lower_case_text.startswith('title'):
+                elif lower_case_text.startswith("title"):
                     # override first line
                     self._title = Title(line)
                     scope.append(self._title)
-                elif lower_case_text.startswith('end'):
+                elif lower_case_text.startswith("end"):
                     pass
-                elif lower_case_text.startswith('model'):
+                elif lower_case_text.startswith("model"):
                     model = Model(line)
                     scope.append(model)
-                elif lower_case_text.startswith('include'):
+                elif lower_case_text.startswith("include"):
                     incl = Include(line)
                     scope.append(incl)
                     if recurse:
                         from .Library import SpiceLibrary
-                        incl_path = os.path.join(str(self._path.directory_part()), str(incl))
-                        self.incl_libs.append(SpiceLibrary(root_path=incl_path, recurse=recurse))
-                elif lower_case_text.startswith('lib'):
+
+                        incl_path = os.path.join(
+                            str(self._path.directory_part()), str(incl)
+                        )
+                        self.incl_libs.append(
+                            SpiceLibrary(root_path=incl_path, recurse=recurse)
+                        )
+                elif lower_case_text.startswith("lib"):
                     lib = Lib(line)
                     if section and str(lib) != section.lower():
                         # If the .lib statement is only followed by the name of a section,
@@ -957,15 +1017,14 @@ class SpiceParser:
                     element = Element(line)
                     scope.append(element)
                 except ParseError:
-                    self._logger.warning('Parse error on:\n{}'.format(line))
+                    self._logger.warning("Parse error on:\n{}".format(line))
 
         return statements
 
     ##############################################
 
     def _find_sections(self):
-
-        """ Look for model, sub-circuit and circuit definitions in the statement list. """
+        """Look for model, sub-circuit and circuit definitions in the statement list."""
 
         self.circuit = None
         self.subcircuits = []
@@ -975,7 +1034,7 @@ class SpiceParser:
                 if self.circuit is None:
                     self.circuit = statement
                 else:
-                    raise NameError('More than one title')
+                    raise NameError("More than one title")
             elif isinstance(statement, SubCircuitStatement):
                 self.subcircuits.append(statement)
             elif isinstance(statement, Model):
@@ -1006,13 +1065,12 @@ class SpiceParser:
             elif isinstance(statement, Model):
                 statement.build(circuit)
             elif isinstance(statement, SubCircuit):
-                subcircuit = statement.build(ground) # Fixme: ok ???
+                subcircuit = statement.build(ground)  # Fixme: ok ???
                 circuit.subcircuit(subcircuit)
 
     ##############################################
 
     def build_circuit(self, ground=0):
-
         """Build a :class:`Circuit` instance.
 
         Use the *ground* parameter to specify the node which must be translated to 0 (SPICE ground node).
@@ -1028,7 +1086,7 @@ class SpiceParser:
     @staticmethod
     def netlist_to_python(netlist_name, statements, ground=0):
 
-        source_code = ''
+        source_code = ""
         for statement in statements:
             if isinstance(statement, Element):
                 source_code += statement.to_python(netlist_name, ground)
@@ -1048,10 +1106,10 @@ class SpiceParser:
 
         ground = str(ground)
 
-        source_code = ''
+        source_code = ""
 
         if self.circuit:
             source_code += "circuit = Circuit('{}')".format(self._title) + os.linesep
-        source_code += self.netlist_to_python('circuit', self._statements, ground)
+        source_code += self.netlist_to_python("circuit", self._statements, ground)
 
         return source_code

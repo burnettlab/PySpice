@@ -1,16 +1,16 @@
-#r# This example depicts a ring modulator
+# r# This example depicts a ring modulator
 
-#r## .. warning:: It don't simulate
-#r#
-#r##   doAnalyses: TRAN:  Timestep too small; time = 5.5453e-08, timestep = 1.25e-18: trouble with xring_modulator.xd2:1n4148-instance d.xring_modulator.xd2.d1
+# r## .. warning:: It don't simulate
+# r#
+# r##   doAnalyses: TRAN:  Timestep too small; time = 5.5453e-08, timestep = 1.25e-18: trouble with xring_modulator.xd2:1n4148-instance d.xring_modulator.xd2.d1
 
 ####################################################################################################
 
 import matplotlib.pyplot as plt
 
 ####################################################################################################
-
 import PySpice.Logging.Logging as Logging
+
 logger = Logging.setup_logging()
 
 ####################################################################################################
@@ -30,28 +30,40 @@ spice_library = SpiceLibrary(libraries_path)
 
 from RingModulator import RingModulator
 
-#f# literal_include('RingModulator.py')
+# f# literal_include('RingModulator.py')
 
 ####################################################################################################
 
-circuit = Circuit('Ring Modulator')
+circuit = Circuit("Ring Modulator")
 
-modulator = circuit.SinusoidalVoltageSource('modulator', 'in', circuit.gnd, amplitude=1@u_V, frequency=1@u_kHz)
-carrier = circuit.SinusoidalVoltageSource('carrier', 'carrier', circuit.gnd, amplitude=10@u_V, frequency=100@u_kHz)
-circuit.R('in', 'in', 1, 50@u_Ω)
-circuit.R('carrier', 'carrier', 2, 50@u_Ω)
+modulator = circuit.SinusoidalVoltageSource(
+    "modulator", "in", circuit.gnd, amplitude=1 @ u_V, frequency=1 @ u_kHz
+)
+carrier = circuit.SinusoidalVoltageSource(
+    "carrier", "carrier", circuit.gnd, amplitude=10 @ u_V, frequency=100 @ u_kHz
+)
+circuit.R("in", "in", 1, 50 @ u_Ω)
+circuit.R("carrier", "carrier", 2, 50 @ u_Ω)
 
-circuit.include(spice_library['1N4148'])
-circuit.subcircuit(RingModulator(outer_inductance=1@u_uH,
-                                 inner_inductance=1@u_uH,
-                                 coupling=.99,
-                                 diode_model='1N4148',
-                             ))
-circuit.X('ring_modulator', 'RingModulator',
-          1, circuit.gnd,
-          2, circuit.gnd,
-          'output', circuit.gnd,
-         )
+circuit.include(spice_library["1N4148"])
+circuit.subcircuit(
+    RingModulator(
+        outer_inductance=1 @ u_uH,
+        inner_inductance=1 @ u_uH,
+        coupling=0.99,
+        diode_model="1N4148",
+    )
+)
+circuit.X(
+    "ring_modulator",
+    "RingModulator",
+    1,
+    circuit.gnd,
+    2,
+    circuit.gnd,
+    "output",
+    circuit.gnd,
+)
 
 # outer_inductance = .01
 # inner_inductance = .0025
@@ -72,7 +84,7 @@ circuit.X('ring_modulator', 'RingModulator',
 # circuit.CoupledInductor('output_top', output_inductor.name, top_inductor.name, coupling)
 # circuit.CoupledInductor('output_bottom', output_inductor.name, bottom_inductor.name, coupling)
 
-circuit.R('load', 'output', circuit.gnd, 1@u_kΩ)
+circuit.R("load", "output", circuit.gnd, 1 @ u_kΩ)
 
 ### simulator = circuit.simulator(temperature=25, nominal_temperature=25)
 ### # simulator.initial_condition(input_top=0, input_bottom=0, output_top=0, output_bottom=0)
