@@ -953,12 +953,12 @@ class Netlist:
 
     def __getitem__(self, attribute_name):
 
-        if attribute_name in self.__dict__.get('_elements', {}):
+        if attribute_name in self.__dict__.get("_elements", {}):
             return self.element(attribute_name)
-        elif attribute_name in self.__dict__.get('_models', {}):
+        elif attribute_name in self.__dict__.get("_models", {}):
             return self.model(attribute_name)
         # Fixme: subcircuits
-        elif attribute_name in self.__dict__.get('_nodes', {}):
+        elif attribute_name in self.__dict__.get("_nodes", {}):
             return self.node(attribute_name)
         else:
             raise IndexError(attribute_name)  # KeyError
@@ -1029,9 +1029,9 @@ class Netlist:
 
     ##############################################
 
-    def model(self, name, modele_type, **parameters):
+    def model(self, name, model_type, **parameters):
         """Add a model."""
-        model = DeviceModel(name, modele_type, **parameters)
+        model = DeviceModel(name, model_type, **parameters)
         if model.name not in self._models:
             self._models[model.name] = model
         else:
@@ -1106,11 +1106,9 @@ class SubCircuit(Netlist):
         self._name = str(name)
         self._external_nodes = nodes
 
-        # Fixme: ok ?
-        self._ground = kwargs.get("ground", 0)
-        if "ground" in kwargs:
-            del kwargs["ground"]
-
+        self._ground = kwargs.pop("ground", 0)
+        self._includes = []  # .include
+        self._libs = []  # .lib, contains a (name, section) tuple
         self._parameters = kwargs
 
     ##############################################
@@ -1127,6 +1125,30 @@ class SubCircuit(Netlist):
         subcircuit = self.__class__(name, list(self._external_nodes), **kwargs)
         self.copy_to(subcircuit)
 
+        for include in self._includes:
+            subcircuit.include(include)
+        for lib in self._libs:
+            subcircuit.lib(*lib)
+
+    ##############################################
+
+    def include(self, path):
+        """Include a file."""
+        if path not in self._includes:
+            self._includes.append(path)
+        else:
+            self._logger.warning("Duplicated include")
+
+    ##############################################
+
+    def lib(self, name, section=None):
+        """Load a library."""
+        v = (name, section)
+        if v not in self._libs:
+            self._libs.append(v)
+        else:
+            self._logger.warning(f"Duplicated lib {v}")
+
     ##############################################
 
     @property
@@ -1141,6 +1163,20 @@ class SubCircuit(Netlist):
     def parameters(self):
         """Parameters"""
         return self._parameters
+
+    @property
+    def includes(self):
+        includes = self._includes[:]
+        for subcirc in self.subcircuits:
+            includes.extend(filter(lambda inc: inc not in includes, subcirc.includes))
+        return includes
+
+    @property
+    def libs(self):
+        libs = self._libs[:]
+        for subcirc in self.subcircuits:
+            libs.extend(filter(lambda lib: lib not in libs, subcirc.libs))
+        return libs
 
     ##############################################
 
@@ -1236,6 +1272,8 @@ class Circuit(Netlist):
 
         for include in self._includes:
             circuit.include(include)
+        for lib in self._libs:
+            circuit.lib(*lib)
         for name, value in self._parameters.items():
             self.parameter(name, value)
 
@@ -1282,16 +1320,33 @@ class Circuit(Netlist):
 
     ##############################################
 
+    @property
+    def includes(self):
+        includes = self._includes[:]
+        for subcirc in self.subcircuits:
+            includes.extend(filter(lambda inc: inc not in includes, subcirc.includes))
+        return includes
+
+    @property
+    def libs(self):
+        libs = self._libs[:]
+        for subcirc in self.subcircuits:
+            libs.extend(filter(lambda lib: lib not in libs, subcirc.libs))
+        return libs
+
+    ##############################################
+
     def _str_title(self):
         return ".title {}".format(self.title) + os.linesep
 
     ##############################################
 
     def _str_includes(self, simulator=None):
-        if self._includes:
+        includes = self.includes
+        if includes:
             # ngspice don't like // in path, thus ensure we write real paths
             real_paths = []
-            for path in self._includes:
+            for path in includes:
                 path = Path(str(path)).resolve()
                 if simulator:
                     path_flavour = Path(str(path) + "@" + simulator)
@@ -1306,9 +1361,10 @@ class Circuit(Netlist):
     ##############################################
 
     def _str_libs(self, simulator=None):
-        if self._libs:
-            libs = []
-            for lib, section in self._libs:
+        libs = self.libs
+        if libs:
+            fixed_libs = []
+            for lib, section in libs:
                 lib = Path(str(lib)).resolve()
                 if simulator:
                     lib_flavour = Path(f"{lib}@{simulator}")
@@ -1317,8 +1373,8 @@ class Circuit(Netlist):
                 s = f".lib {lib}"
                 if section:
                     s += f" {section}"
-                libs.append(s)
-            return os.linesep.join(libs) + os.linesep
+                fixed_libs.append(s)
+            return os.linesep.join(fixed_libs) + os.linesep
         else:
             return ""
 
