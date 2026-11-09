@@ -849,8 +849,23 @@ class NgSpiceShared:
         if rc:  # Fixme: when not 0 ???
             raise NameError("ngSpice_Command '{}' returned {}".format(command, rc))
 
-        if self._error_in_stdout or self._error_in_stderr:
-            raise NgSpiceCommandError("Command '{}' failed".format(command))
+        warning_regex = re.compile(r"Warning.*:.*ignored\n.*")
+
+        if self._error_in_stdout:
+            stdout = self.stdout[:]
+            while (m := warning_regex.match(stdout)):
+                stdout = stdout[:m.start()] + stdout[m.end():]
+
+            if len(stdout) > 0:
+                raise NgSpiceCommandError("Command '{}' failed".format(command))
+
+        if self._error_in_stderr:
+            stderr = self.stderr[:]
+            while (m := warning_regex.match(stderr)):
+                stderr = stderr[:m.start()] + stderr[m.end()+1:]
+
+            if len(stderr) > 0:
+                raise NgSpiceCommandError("Command '{}' failed".format(command))
 
         if join_lines:
             return self.stdout
